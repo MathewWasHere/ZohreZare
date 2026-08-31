@@ -1,0 +1,27 @@
+{
+  "name": "زهره زارع - آکادمی تخصصی لب، مژه و ابرو",
+  "short_name": "زهره زارع",
+  "description": "خدمات تخصصی لب، مژه و ابرو با طراحی متناسب با فرم چهره",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FDFBF8",
+  "theme_color": "#FDFBF8",
+  "orientation": "portrait",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "assets/img/brand/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["beauty", "lifestyle"],
+  "scope": "./"
+}

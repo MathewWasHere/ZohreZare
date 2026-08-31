@@ -330,18 +330,15 @@ select.input {
 
 /* ==================== هدر ==================== */
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  background: rgba(253, 251, 248, 0.86);
+  background: rgba(253, 251, 248, 0.94);
   backdrop-filter: saturate(150%) blur(14px);
   -webkit-backdrop-filter: saturate(150%) blur(14px);
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
-}
-.header.is-stuck {
-  border-bottom-color: var(--line);
-  background: rgba(253, 251, 248, 0.94);
+  border-bottom: 1px solid var(--line);
 }
 
 .header__inner {
@@ -417,7 +414,7 @@ select.input {
 }
 
 .header__actions { display: flex; align-items: center; gap: var(--sp-2); }
-.header__cta { display: none; }
+.header__cta { display: inline-flex; }
 
 /* دکمه منوی موبایل — سه خط هم‌طول با گوشه‌ی گرد */
 .burger {
@@ -475,7 +472,7 @@ select.input {
 
 /* ---------- دکمه‌ی تماس و مشاوره رایگان ---------- */
 .call-btn {
-  display: none;             /* روی موبایل مخفی؛ در منو هست */
+  display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
   padding: 0.34rem 0.85rem 0.34rem 0.55rem;
@@ -486,6 +483,28 @@ select.input {
   transition: border-color var(--dur) var(--ease),
               background-color var(--dur) var(--ease),
               box-shadow var(--dur) var(--ease);
+}
+/* موبایل: فقط آیکون */
+@media (max-width: 859px) {
+  .call-btn {
+    padding: 0.42rem;
+  }
+  .call-btn__text {
+    display: none;
+  }
+  .header__cta {
+    padding: 0.4rem 0.6rem;
+    font-size: var(--fs-xs);
+  }
+  .profile-box,
+  .header__actions .btn--sm {
+    padding: 0.35rem 0.6rem;
+    font-size: var(--fs-xs);
+  }
+  .burger {
+    width: 36px;
+    height: 36px;
+  }
 }
 .call-btn:hover {
   border-color: var(--rose-400);
@@ -524,8 +543,6 @@ select.input {
   color: var(--ink-900);
 }
 .call-btn .phone-dot { margin-inline: 0.22em; }
-
-@media (min-width: 1080px) { .call-btn { display: inline-flex; } }
 
 /* منوی کشویی موبایل */
 .mobile-nav {
@@ -631,6 +648,133 @@ select.input {
 .footer__socials a:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--gold-300); }
 .footer__socials svg { width: 18px; height: 18px; }
 
+/* ==================== پاپ‌آپ نصب PWA - Delava Style ==================== */
+.install-prompt {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 80px;
+  z-index: 9999;
+  max-width: 100%;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.install-prompt.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .install-prompt {
+    left: 24px;
+    right: auto;
+    bottom: 24px;
+    max-width: 360px;
+  }
+}
+
+.install-prompt__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 10px;
+  background: #1A1210;
+  border: 1px solid rgba(196, 130, 109, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.35);
+}
+
+.install-prompt__logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: #C4826D;
+  border: 1px solid rgba(196, 130, 109, 0.3);
+  object-fit: contain;
+  padding: 4px;
+  filter: brightness(0) invert(1);
+}
+
+.install-prompt__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-prompt__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #FFFCFA;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.install-prompt__desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 252, 250, 0.55);
+}
+
+.install-prompt__close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 252, 250, 0.5);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.install-prompt__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFCFA;
+}
+
+.install-prompt__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.install-prompt__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+  height: 44px;
+  border: none;
+  border-radius: 16px;
+  background: #C4826D;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.install-prompt__btn:hover {
+  filter: brightness(1.1);
+}
+
+.install-prompt__btn:active {
+  transform: scale(0.98);
+}
+
+.install-prompt__btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* ==================== توست (پیام شناور) ==================== */
 .toast-host {
   position: fixed;
@@ -673,7 +817,6 @@ select.input {
 @media (min-width: 860px) {
   .nav { display: block; }
   .burger { display: none; }
-  .header__cta { display: inline-flex; }
   .mobile-nav { display: none; }
   .footer__grid { grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: var(--sp-5); }
 }

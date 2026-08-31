@@ -6,6 +6,7 @@
 .hero {
   position: relative;
   overflow: hidden;
+  padding-top: var(--header-h);
   background:
     radial-gradient(120% 90% at 22% 14%, var(--blush-100) 0%, transparent 56%),
     radial-gradient(100% 70% at 94% 90%, #FBEFE6 0%, transparent 60%),
@@ -310,11 +311,12 @@
 /* ==================== کارت خدمت ==================== */
 .services-grid {
   display: grid;
-  gap: var(--sp-4);
-  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(2, 1fr);
 }
-@media (min-width: 680px)  { .services-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1080px) { .services-grid { grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); } }
+@media (min-width: 720px) {
+  .services-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
 .svc-card {
   display: flex;
@@ -329,11 +331,11 @@
 .svc-card:hover {
   border-color: var(--blush-300);
   box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 .svc-card__media {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--cream-200);
 }
@@ -345,9 +347,9 @@
 .svc-card:hover .svc-card__media img { transform: scale(1.05); }
 .svc-card__icon {
   position: absolute;
-  top: var(--sp-3);
-  inset-inline-start: var(--sp-3);
-  width: 40px; height: 40px;
+  top: var(--sp-2);
+  inset-inline-start: var(--sp-2);
+  width: 32px; height: 32px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -355,33 +357,37 @@
   backdrop-filter: blur(6px);
   color: var(--rose-500);
 }
-.svc-card__icon svg { width: 21px; height: 21px; }
+.svc-card__icon svg { width: 16px; height: 16px; }
 .svc-card__body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: var(--sp-5);
+  padding: var(--sp-3);
 }
-.svc-card__title { font-size: var(--fs-lg); margin-bottom: var(--sp-2); }
+.svc-card__title { font-size: var(--fs-sm); margin-bottom: var(--sp-2); line-height: 1.5; }
 .svc-card__text {
   color: var(--text-muted);
-  font-size: var(--fs-sm);
-  line-height: 1.95;
-  margin-bottom: var(--sp-4);
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+  margin-bottom: var(--sp-2);
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .svc-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3);
-  padding-top: var(--sp-4);
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
   border-top: 1px solid var(--line);
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-2);
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
-.svc-card__meta span { display: inline-flex; align-items: center; gap: 6px; }
-.svc-card__meta svg { width: 15px; height: 15px; color: var(--rose-400); }
+.svc-card__meta span { display: inline-flex; align-items: center; gap: 4px; }
+.svc-card__meta svg { width: 13px; height: 13px; color: var(--rose-400); }
 .svc-card__body > .svc-card__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -392,13 +398,17 @@
   flex: none;
   width: 100%;
   min-width: 0;
+  min-height: 2rem;
+  font-size: var(--fs-xs);
+  padding: 6px 8px;
 }
 
 /* ==================== صفحه‌ی جزئیات خدمت ==================== */
 .page-head {
   background: var(--bg-soft);
   border-bottom: 1px solid var(--line);
-  padding-block: var(--sp-6);
+  padding-top: calc(var(--sp-6) + var(--header-h));
+  padding-bottom: var(--sp-6);
 }
 .page-head h1 { margin-bottom: var(--sp-3); }
 .page-head p { color: var(--text-muted); max-width: 620px; margin-bottom: 0; }
@@ -457,7 +467,22 @@
   margin-top: 6px;
 }
 
-.pill-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.pill-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--sp-2); }
+.badge {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: var(--r-sm);
+  background: var(--blush-100);
+  color: var(--rose-700);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.badge--muted {
+  background: var(--cream-200);
+  color: var(--text-muted);
+}
 
 /* جدول قیمت */
 .price-table { display: flex; flex-direction: column; }
@@ -541,7 +566,8 @@
   min-height: calc(100svh - var(--header-h));
   display: flex;
   align-items: center;
-  padding-block: var(--sp-6);
+  padding-top: calc(var(--sp-6) + var(--header-h));
+  padding-bottom: var(--sp-6);
   background:
     radial-gradient(90% 60% at 85% 0%, var(--blush-100) 0%, transparent 55%),
     var(--cream-50);
@@ -780,6 +806,7 @@
   align-items: center;
   gap: var(--sp-4);
   flex-wrap: wrap;
+  padding-top: calc(var(--sp-5) + var(--header-h));
   padding-bottom: var(--sp-5);
   border-bottom: 1px solid var(--line);
   margin-bottom: var(--sp-6);
@@ -956,9 +983,7 @@
 
 /* ==================== نوار CTA پایانی ==================== */
 /* ---------- نوار CTA با بنر آماده ----------
-   banner-cta.jpg خودش سوژه و پس‌زمینه را دارد (نسبت ۱۲۰۸:۳۱۳،
-   سوژه سمت چپ). به‌جای min-height از aspect-ratio استفاده می‌کنیم
-   تا هیچ‌وقت سوژه بریده نشود. */
+   banner-cta.jpg خودش سوژه و پس‌زمینه را دارد. */
 .cta-band {
   position: relative;
   overflow: hidden;
@@ -968,9 +993,10 @@
   isolation: isolate;
   display: flex;
   align-items: center;
-  /* موبایل: فضای عمودی بیشتر برای متن و دو دکمه */
-  aspect-ratio: 1100 / 1000;
-  min-height: 360px;
+  width: 100%;
+  max-width: 860px;
+  margin-inline: auto;
+  min-height: 200px;
 }
 
 .cta-band__photo {
@@ -984,18 +1010,16 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* سوژه سمت چپ است — هنگام برش، چپ حفظ می‌شود */
   object-position: left center;
 }
 
-/* موبایل: سوژه سمت چپ بنر است، پس متن در نیمه‌ی راست می‌نشیند
-   و راست‌چین می‌شود تا هرگز روی چهره نیفتد. */
+/* متن در نیمه‌ی راست */
 .cta-band__inner {
   position: relative;
   z-index: 1;
-  width: 68%;
-  margin-inline: auto;
-  padding: var(--sp-4);
+  width: 60%;
+  margin-inline-start: auto;
+  padding: var(--sp-4) var(--sp-5);
   text-align: center;
 }
 .cta-band .cta-actions {
@@ -1007,18 +1031,19 @@
 
 .cta-band h2 { color: #fff; }
 .cta-band__title {
-  font-size: clamp(1.05rem, 4.6vw, 2.35rem);
+  font-size: clamp(1rem, 3.6vw, 1.8rem);
   font-weight: 600;
   letter-spacing: -0.022em;
-  line-height: 1.5;
-  margin-bottom: var(--sp-5);
+  line-height: 1.4;
+  margin-bottom: var(--sp-3);
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.45);
 }
 .cta-band p {
   color: rgba(255, 255, 255, 0.74);
   max-width: 480px;
   margin-inline: auto;
-  margin-bottom: var(--sp-5);
+  margin-bottom: var(--sp-4);
+  display: none;
 }
 .cta-band .btn--primary { background: var(--cream-50); color: var(--ink-900); }
 .cta-band .btn--primary:hover { background: var(--blush-200); color: var(--ink-900); }
@@ -1026,11 +1051,10 @@
 .cta-band .btn--ghost:hover { background: rgba(255, 255, 255, 0.13); border-color: transparent; }
 .cta-actions { display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap; }
 
-/* دسکتاپ: سوژه‌ی بنر سمت چپ → متن در نیمه‌ی راست */
+/* دسکتاپ */
 @media (min-width: 820px) {
   .cta-band {
-    aspect-ratio: 1208 / 313;
-    min-height: 0;
+    min-height: 220px;
   }
   .cta-band .cta-actions {
     flex-direction: row;
@@ -1038,15 +1062,33 @@
     justify-content: center;
   }
   .cta-band .cta-actions .btn { width: auto; }
-  /* متن در فضای خالی بین سوژه‌ی سمت چپ و خوشه‌ی گندم سمت راست قرار می‌گیرد. */
   .cta-band__inner {
-    width: 48%;
-    margin-inline: auto;
-    padding: var(--sp-6) var(--sp-4);
-    text-align: center;
+    width: 50%;
+    padding: var(--sp-5) var(--sp-6);
   }
-  .cta-band .cta-actions { justify-content: center; }
-  .cta-band p { margin-inline: auto; }
+}
+
+/* موبایل */
+@media (max-width: 719px) {
+  .cta-band {
+    max-width: 520px;
+    min-height: 180px;
+    border-radius: clamp(16px, 4vw, 24px);
+  }
+  .cta-band__inner {
+    width: 65%;
+    padding: var(--sp-3) var(--sp-3);
+  }
+  .cta-band__title {
+    font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+    line-height: 1.5;
+    margin-bottom: var(--sp-2);
+  }
+  .cta-band .cta-actions .btn {
+    padding: 10px 12px;
+    font-size: var(--fs-xs);
+    min-height: 40px;
+  }
 }
 
 /* ---------- فوتر با بنر ----------
@@ -1106,8 +1148,8 @@
    ========================================================================== */
 .flow {
   display: grid;
-  gap: var(--sp-5);
-  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(2, 1fr);
   counter-reset: flow;
 }
 @media (min-width: 700px)  { .flow { grid-template-columns: repeat(2, 1fr); } }
@@ -1116,7 +1158,7 @@
 .flow__item {
   counter-increment: flow;
   position: relative;
-  padding-top: var(--sp-6);
+  padding-top: var(--sp-4);
 }
 .flow__item::before {
   content: counter(flow, persian);
@@ -1124,20 +1166,25 @@
   top: 0;
   inset-inline-start: 0;
   font-family: var(--font-title);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   color: var(--blush-300);
   line-height: 1;
 }
 .flow__item h3 {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-sm);
   font-weight: 400;
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-2);
+  line-height: 1.4;
 }
 .flow__item p {
-  font-size: var(--fs-sm);
+  font-size: 11px;
   color: var(--text-muted);
-  line-height: 1.95;
+  line-height: 1.6;
   margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ==========================================================================
@@ -1241,7 +1288,8 @@
 .panel-head {
   background: linear-gradient(135deg, #1A1210 0%, #2A1C16 60%, #3A2519 100%);
   color: var(--cream-100);
-  padding-block: var(--sp-6);
+  padding-top: calc(var(--sp-6) + var(--header-h));
+  padding-bottom: var(--sp-6);
   margin-bottom: var(--sp-6);
 }
 .panel-head h1 {
@@ -1744,7 +1792,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: var(--sp-5);
+  padding: var(--sp-3);
 }
 .services-grid .svc-card__icon {
   width: 40px;
@@ -1853,8 +1901,8 @@
 /* ==================== اعتماد و خدمات محلی ==================== */
 .proof-grid {
   display: grid;
-  gap: var(--sp-4);
-  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(2, 1fr);
 }
 @media (min-width: 620px) {
   .proof-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1865,8 +1913,8 @@
 
 .proof-card {
   position: relative;
-  min-height: 220px;
-  padding: var(--sp-5);
+  min-height: 0;
+  padding: var(--sp-3);
   background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -1878,49 +1926,54 @@
 .proof-card::after {
   content: '';
   position: absolute;
-  width: 130px;
-  height: 130px;
-  left: -54px;
-  bottom: -62px;
+  width: 80px;
+  height: 80px;
+  left: -40px;
+  bottom: -40px;
   border-radius: 50%;
   background: var(--blush-100);
-  opacity: 0.75;
+  opacity: 0.6;
 }
 .proof-card:hover {
   border-color: var(--blush-300);
   box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
 }
 .proof-card__icon {
   position: relative;
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: var(--sp-4);
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--sp-2);
   border-radius: 50%;
   background: var(--blush-100);
   color: var(--rose-600);
   line-height: 1;
 }
 .proof-card__icon svg {
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
 }
 .proof-card h3 {
   position: relative;
   z-index: 1;
-  font-size: var(--fs-lg);
-  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-1);
+  line-height: 1.4;
 }
 .proof-card p {
   position: relative;
   z-index: 1;
   color: var(--text-muted);
-  font-size: var(--fs-sm);
-  line-height: 2;
+  font-size: 11px;
+  line-height: 1.6;
   margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .local-band {
@@ -2212,7 +2265,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: var(--sp-2) var(--sp-1) var(--sp-4);
-  scroll-snap-type: x proximity;
   scroll-behavior: smooth;
   overscroll-behavior-inline: contain;
   -webkit-overflow-scrolling: touch;
@@ -2232,7 +2284,6 @@
 
 .portfolio-card {
   flex: 0 0 clamp(280px, 30vw, 330px);
-  scroll-snap-align: start;
 }
 
 @media (max-width: 559px) {
@@ -2427,6 +2478,8 @@
 
   .cta-band {
     width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
     min-height: 0;
     aspect-ratio: 1100 / 856;
     border-radius: clamp(18px, 5vw, 28px);
@@ -2490,3 +2543,4 @@
     white-space: normal;
   }
 }
+

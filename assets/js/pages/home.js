@@ -17,10 +17,16 @@
         '</div>' +
         '<div class="svc-card__body">' +
           '<h3 class="svc-card__title">' + u.esc(s.title) + '</h3>' +
+          '<div class="pill-row">' +
+            (s.variants || []).slice(0, 3).map(function (v) {
+              return '<span class="badge">' + u.esc(v.name) + '</span>';
+            }).join('') +
+            ((s.variants || []).length > 3 ? '<span class="badge badge--muted">+' + u.toFa((s.variants || []).length - 3) + '</span>' : '') +
+          '</div>' +
           '<p class="svc-card__text">' + u.esc(s.short) + '</p>' +
           '<div class="svc-card__meta">' +
             '<span>' + ZZ.icon('clock') + u.duration(s.durationMin) + '</span>' +
-            '<span>' + ZZ.icon('tag') + 'از ' + u.money(s.priceFrom) + ' ' + ZZ.config.booking.currency + '</span>' +
+            '<span>' + ZZ.icon('tag') + 'از ' + u.money(s.priceFrom) + '</span>' +
           '</div>' +
           '<div class="svc-card__actions">' +
             '<a class="btn btn--ghost btn--sm" href="service.html?s=' + s.slug + '">جزئیات</a>' +
