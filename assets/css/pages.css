@@ -1985,7 +1985,7 @@
   padding: var(--sp-5) var(--sp-6);
   background:
     linear-gradient(90deg, rgba(21, 16, 14, 0.88), rgba(21, 16, 14, 0.68)),
-    url('../img/salon-interior.jpg?v=3') center / cover no-repeat;
+    url('../img/salon-interior.jpg?v=4') center / cover no-repeat;
   border-radius: var(--r-xl);
   color: var(--cream-50);
   overflow: hidden;
@@ -2208,7 +2208,7 @@
   padding: var(--sp-5) var(--sp-6);
   background:
     linear-gradient(100deg, rgba(251, 230, 223, 0.94), rgba(255, 252, 250, 0.94)),
-    url('../img/salon-interior.jpg?v=3') center / cover no-repeat;
+    url('../img/salon-interior.jpg?v=4') center / cover no-repeat;
   border: 1px solid var(--blush-200);
   border-radius: var(--r-xl);
 }
