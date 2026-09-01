@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zohrezare-v4';
+const CACHE_NAME = 'zohrezare-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -33,8 +33,9 @@ const STATIC_ASSETS = [
   './assets/js/ui/hero-orbit.js',
   './assets/img/favicon.svg',
   './assets/img/brand/logo.png',
-  './assets/img/portrait-cutout.png',
-  './assets/img/edited_v2.png',
+  './assets/img/brand/icon-192.png',
+  './assets/img/portrait-cutout.webp',
+  './assets/img/edited_v2.webp',
   './assets/img/banner-cta.jpg',
   './assets/img/banner-cta-mobile.jpg',
   './assets/img/banner-footer.jpg'
@@ -68,58 +69,85 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// استراتژی Cache First برای فایل‌های استاتیک
+// استراتژی واکشی
+//
+//   • صفحه‌ها (navigation): اول شبکه، بعد کش
+//     قبلاً همه‌چیز «اول کش» بود؛ نتیجه این می‌شد که بعد از هر
+//     به‌روزرسانی سایت، بازدیدکننده‌ی قدیمی هنوز نسخه‌ی کش‌شده را
+//     می‌دید. حالا صفحه همیشه تازه گرفته می‌شود و کش فقط پشتیبانِ
+//     حالت آفلاین است.
+//
+//   • فایل‌های ثابت (CSS/JS/تصویر/فونت): اول کش، بعد شبکه — سریع
+//     و کم‌مصرف.
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // فقط درخواست‌های same-origin
+  const request = event.request;
+
+  // فقط درخواست‌های GET قابل کش شدن هستند
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  // فقط same-origin
   if (url.origin !== location.origin) return;
-  
-  // نادیده گرفتن درخواست‌های API
+
+  // درخواست‌های API هرگز کش نمی‌شوند
   if (url.pathname.startsWith('/api/')) return;
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // اگر در کش بود، برگردون
-      if (response) {
-        return response;
-      }
-      
-      // وگرنه از شبکه بگیر و در کش ذخیره کن
-      return fetch(event.request).then((response) => {
-        // اگر response معتبر نبود، برگردون
-        if (!response || response.status !== 200 || response.type !== 'basic') {
+  const accept = request.headers.get('accept') || '';
+  const isPage = request.mode === 'navigate' || accept.includes('text/html');
+
+  if (isPage) {
+    // اول شبکه
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
           return response;
-        }
-        
-        // clone کردن response برای ذخیره در کش
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        
-        return response;
-      });
-    }).catch(() => {
-      // اگر offline بود و فایل در کش نبود، صفحه اصلی رو برگردون
-      if (event.request.headers.get('accept').includes('text/html')) {
-        return caches.match('./index.html');
-      }
+        })
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // اول کش
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(request)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => cached);
     })
   );
 });
 
 // پشتیبان‌گیری از نوتیفیکیشن push (اختیاری برای آینده)
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = {};
+  }
   const title = data.title || 'زهره زارع';
   const options = {
     body: data.body || 'پیام جدید',
-    icon: data.icon || './assets/img/brand/logo.png',
+    icon: data.icon || './assets/img/brand/icon-192.png',
     badge: './assets/img/favicon.svg'
   };
-  
+
   event.waitUntil(
     self.registration.showNotification(title, options)
   );
