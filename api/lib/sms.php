@@ -35,6 +35,14 @@ final class Sms
     private array $cfg;
 
     /**
+     * جزئیات آخرین درخواست وب‌سرویس — فقط برای صفحه‌ی تشخیص.
+     * شامل آدرس، کد HTTP، بدنه‌ی خام پاسخ و بدنه‌ی درخواست (بدون رمز).
+     *
+     * @var array<string,mixed>
+     */
+    private array $last = [];
+
+    /**
      * @param array<string,mixed>|null $cfg بخش sms از config —
      *        اگر ندهید، خودش از Config می‌خواند.
      */
@@ -92,6 +100,59 @@ final class Sms
     public static function isOk(int $code): bool
     {
         return $code === 0;
+    }
+
+    /** جزئیات آخرین فراخوانی وب‌سرویس — برای sms-test.php */
+    public function lastCall(): array
+    {
+        return $this->last;
+    }
+
+    /**
+     * خواندن یک کلید از پاسخ، بدون حساسیت به بزرگی و کوچکی حروف
+     * و بدون حساسیت به خط زیر — چون پنل‌های مختلف یکسان جواب نمی‌دهند.
+     *
+     * @param array<string,mixed> $res
+     * @param array<int,string>   $names
+     */
+    private static function field(array $res, array $names, $default = null)
+    {
+        $flat = [];
+        foreach ($res as $k => $v) {
+            $flat[strtolower(str_replace('_', '', (string) $k))] = $v;
+        }
+        foreach ($names as $name) {
+            $key = strtolower(str_replace('_', '', $name));
+            if (array_key_exists($key, $flat)) {
+                return $flat[$key];
+            }
+        }
+        return $default;
+    }
+
+    /**
+     * کد نتیجه را از پاسخ بیرون می‌کشد.
+     *
+     * نیازپرداز ResultCode می‌دهد که صفرش یعنی موفق. بعضی پنل‌های
+     * هم‌خانواده به جایش RetStatus می‌دهند که در آن‌ها یک یعنی موفق.
+     * این تابع دومی را به قرارداد اولی ترجمه می‌کند تا بقیه‌ی کد
+     * فقط یک قرارداد بشناسد.
+     *
+     * @param array<string,mixed> $res
+     */
+    private static function codeOf(array $res): int
+    {
+        $code = self::field($res, ['ResultCode', 'Result', 'Status', 'Code']);
+        if ($code !== null && is_numeric($code)) {
+            return (int) $code;
+        }
+
+        $ret = self::field($res, ['RetStatus']);
+        if ($ret !== null && is_numeric($ret)) {
+            return ((int) $ret) === 1 ? 0 : (int) $ret;
+        }
+
+        return -100;
     }
 
     /* ------------------------------------------------------------------
@@ -168,13 +229,13 @@ final class Sms
             return $out;
         }
 
-        $code = (int) ($res['ResultCode'] ?? -100);
+        $code = self::codeOf($res);
+        $id   = self::field($res, ['BatchSmsId', 'SmsId', 'MessageId', 'Value']);
         $out  = [
             'ok'      => self::isOk($code),
             'code'    => $code,
             'message' => self::describe($code),
-            'id'      => isset($res['BatchSmsId']) ? (int) $res['BatchSmsId']
-                       : (isset($res['SmsId']) ? (int) $res['SmsId'] : null),
+            'id'      => is_numeric($id) ? (int) $id : null,
         ];
         self::log($to, $tag, $text, $out);
         return $out;
@@ -231,10 +292,11 @@ final class Sms
         if (isset($res['error'])) {
             return ['ok' => false, 'credit' => null, 'message' => $res['error']];
         }
-        $code = (int) ($res['ResultCode'] ?? -100);
+        $code   = self::codeOf($res);
+        $amount = self::field($res, ['Credit', 'Value', 'Amount']);
         return [
             'ok'      => self::isOk($code),
-            'credit'  => isset($res['Credit']) ? (float) $res['Credit'] : null,
+            'credit'  => is_numeric($amount) ? (float) $amount : null,
             'message' => self::describe($code),
         ];
     }
@@ -246,10 +308,10 @@ final class Sms
         if (isset($res['error'])) {
             return ['ok' => false, 'senders' => [], 'message' => $res['error']];
         }
-        $code = (int) ($res['ResultCode'] ?? -100);
+        $code = self::codeOf($res);
         return [
             'ok'      => self::isOk($code),
-            'senders' => array_map('strval', (array) ($res['Senders'] ?? [])),
+            'senders' => array_map('strval', (array) self::field($res, ['Senders', 'SenderNumbers', 'Numbers', 'Value'], [])),
             'message' => self::describe($code),
         ];
     }
@@ -261,10 +323,11 @@ final class Sms
         if (isset($res['error'])) {
             return ['ok' => false, 'valid' => null, 'message' => $res['error']];
         }
-        $code = (int) ($res['ResultCode'] ?? -100);
+        $code  = self::codeOf($res);
+        $valid = self::field($res, ['IsValid', 'Valid']);
         return [
             'ok'      => self::isOk($code),
-            'valid'   => isset($res['IsValid']) ? (bool) $res['IsValid'] : null,
+            'valid'   => $valid === null ? null : (bool) $valid,
             'message' => self::describe($code),
         ];
     }
@@ -279,14 +342,15 @@ final class Sms
      * @param array<string,mixed> $params
      * @return array<string,mixed>  در صورت خطای شبکه کلید error دارد
      */
-    private function call(string $method, array $params): array
+    private function call(string $method, array $params, array $opts = []): array
     {
-        $base = rtrim((string) ($this->cfg['base_url'] ?? ''), '/');
+        $base = rtrim((string) ($opts['base_url'] ?? $this->cfg['base_url'] ?? ''), '/');
         $url  = $base . '/' . $method;
 
         /* auth_mode تعیین می‌کند رمز پنل برود یا کلید API — توضیحش
            بالای فایل */
-        $secret = ($this->cfg['auth_mode'] ?? 'username_password') === 'api_key'
+        $mode   = (string) ($opts['auth_mode'] ?? $this->cfg['auth_mode'] ?? 'username_password');
+        $secret = $mode === 'api_key'
             ? (string) ($this->cfg['api_key'] ?? '')
             : (string) ($this->cfg['password'] ?? '');
 
@@ -295,10 +359,44 @@ final class Sms
             'password' => $secret,
         ], $params);
 
-        $json = json_encode($body, JSON_UNESCAPED_UNICODE);
-        if ($json === false) {
-            return ['error' => 'ساخت درخواست JSON ناموفق بود.'];
+        /* بعضی پیاده‌سازی‌ها کلید را جدا از رمز می‌خواهند */
+        if (!empty($opts['with_api_key']) && !empty($this->cfg['api_key'])) {
+            $body['apiKey'] = (string) $this->cfg['api_key'];
         }
+
+        $form = !empty($opts['form']);
+        if ($form) {
+            $payload = http_build_query($body);
+            $headers = [
+                'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
+                'Accept: application/json',
+            ];
+        } else {
+            $payload = json_encode($body, JSON_UNESCAPED_UNICODE);
+            if ($payload === false) {
+                return ['error' => 'ساخت درخواست JSON ناموفق بود.'];
+            }
+            $headers = [
+                'Content-Type: application/json; charset=utf-8',
+                'Accept: application/json',
+            ];
+        }
+
+        /* آنچه در صفحه‌ی تشخیص نشان داده می‌شود — رمز عمداً پاک شده */
+        $shown = $body;
+        foreach (['password', 'apiKey'] as $secretKey) {
+            if (isset($shown[$secretKey])) {
+                $shown[$secretKey] = $shown[$secretKey] === '' ? '(خالی)' : '(پنهان)';
+            }
+        }
+        $this->last = [
+            'url'      => $url,
+            'encoding' => $form ? 'form' : 'json',
+            'sent'     => $shown,
+            'http'     => 0,
+            'raw'      => '',
+            'error'    => '',
+        ];
 
         if (!function_exists('curl_init')) {
             return ['error' => 'افزونه‌ی cURL روی این هاست فعال نیست.'];
@@ -308,12 +406,9 @@ final class Sms
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $json,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json; charset=utf-8',
-                'Accept: application/json',
-            ],
-            CURLOPT_TIMEOUT        => (int) ($this->cfg['timeout'] ?? 15),
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => (int) ($opts['timeout'] ?? $this->cfg['timeout'] ?? 15),
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
@@ -323,24 +418,67 @@ final class Sms
         $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        $this->last['http'] = $http;
+        $this->last['raw']  = is_string($raw) ? mb_substr($raw, 0, 2000, 'UTF-8') : '';
+
         if ($raw === false || $err !== '') {
+            $this->last['error'] = $err;
             return ['error' => 'ارتباط با سامانه‌ی پیامک برقرار نشد: ' . $err];
         }
         if ($http < 200 || $http >= 300) {
-            return ['error' => 'سامانه‌ی پیامک کد ' . $http . ' برگرداند.'];
+            return ['error' => 'سامانه‌ی پیامک کد HTTP ' . $http . ' برگرداند.'];
         }
 
         $data = json_decode((string) $raw, true);
         if (!is_array($data)) {
-            return ['error' => 'پاسخ سامانه‌ی پیامک قابل خواندن نبود: ' . mb_substr((string) $raw, 0, 200)];
+            return ['error' => 'پاسخ سامانه‌ی پیامک JSON نبود: ' . mb_substr(trim((string) $raw), 0, 200, 'UTF-8')];
+        }
+
+        /* بعضی سرویس‌ها پاسخ را یک یا دو لایه بسته‌بندی می‌کنند —
+           مثل {"GetCreditResult":{...}} یا {"d":{...}} یا {"data":{...}}.
+           تا وقتی پوسته فقط یک کلید دارد، لایه‌ها را باز می‌کنیم. */
+        for ($i = 0; $i < 3; $i++) {
+            if (count($data) !== 1) {
+                break;
+            }
+            $only  = array_key_first($data);
+            $inner = $data[$only];
+            $isWrapper = is_string($only) && (
+                strcasecmp($only, 'd') === 0 ||
+                strcasecmp($only, 'data') === 0 ||
+                strcasecmp($only, 'result') === 0 ||
+                substr_compare($only, 'Result', -6, 6, true) === 0
+            );
+            if (!$isWrapper || !is_array($inner)) {
+                break;
+            }
+            $data = $inner;
         }
 
         /* بعضی متدها کلیدها را با حرف کوچک برمی‌گردانند */
         $out = [];
         foreach ($data as $k => $v) {
-            $out[ucfirst((string) $k)] = $v;
+            $out[is_string($k) ? ucfirst($k) : $k] = $v;
         }
+        $this->last['parsed'] = $out;
         return $out;
+    }
+
+    /**
+     * یک فراخوانی آزمایشی با تنظیمات دلخواه — فقط برای sms-test.php.
+     * پاسخ خام را هم برمی‌گرداند تا بشود دید سامانه دقیقاً چه می‌گوید.
+     *
+     * @param array<string,mixed> $params
+     * @param array<string,mixed> $opts   base_url / auth_mode / form / with_api_key
+     */
+    public function probe(string $method, array $params = [], array $opts = []): array
+    {
+        $res = $this->call($method, $params, $opts);
+        return [
+            'code'    => isset($res['error']) ? -100 : self::codeOf($res),
+            'error'   => $res['error'] ?? '',
+            'call'    => $this->last,
+        ];
     }
 
     /* ------------------------------------------------------------------

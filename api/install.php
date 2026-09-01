@@ -50,6 +50,7 @@ if ($configExists) {
 $given   = isset($_GET['key']) ? (string) $_GET['key'] : '';
 $allowed = $configExists && $guardKey !== '' && hash_equals($guardKey, $given);
 $doRun   = $allowed && isset($_GET['run']);
+$doLock  = $allowed && isset($_GET['lock']);
 
 /* ------------------------------------------------------------------
    جدا کردن دستورهای SQL
@@ -224,10 +225,53 @@ if ($doRun) {
     }
 }
 
+/* ------------------------------------------------------------------
+   قفل ضدِ رزرو هم‌زمان (اختیاری)
+
+   یک ستون محاسبه‌شده به appointments اضافه می‌کند که «تاریخ + ساعت»
+   نوبت‌های فعال را یکتا می‌کند. اگر دو نفر در همان لحظه یک ساعت را
+   بگیرند، دیتابیس دومی را رد می‌کند. به MySQL 5.7+ یا MariaDB 10.2+
+   نیاز دارد؛ روی سرورهای قدیمی‌تر خطا می‌دهد و سایت بدون آن هم درست
+   کار می‌کند.
+   ------------------------------------------------------------------ */
+$lockDone    = false;
+$lockAlready = false;
+$lockError   = null;
+
+if ($doLock) {
+    try {
+        $exists = (int) Db::val(
+            "SELECT COUNT(*) FROM information_schema.columns
+              WHERE table_schema = DATABASE()
+                AND table_name = 'appointments'
+                AND column_name = 'slot_lock'"
+        );
+
+        if ($exists > 0) {
+            $lockAlready = true;
+        } else {
+            Db::conn()->exec(
+                "ALTER TABLE appointments
+                   ADD COLUMN slot_lock VARCHAR(20)
+                     GENERATED ALWAYS AS (
+                       CASE WHEN status IN ('pending','confirmed')
+                            THEN CONCAT(`date`, ' ', `time`) ELSE NULL END
+                     ) STORED,
+                   ADD UNIQUE KEY uk_appt_slot (slot_lock)"
+            );
+            $lockDone = true;
+        }
+    } catch (Throwable $e) {
+        $lockError = $e instanceof PDOException
+            ? ('#' . ($e->errorInfo[1] ?? '?') . ' — ' . ($e->errorInfo[2] ?? $e->getMessage()))
+            : $e->getMessage();
+    }
+}
+
 /* وضعیت فعلی دیتابیس، حتی وقتی هنوز اجرا نکرده‌ایم */
 $currentTables = [];
 $currentDbName = '';
-if ($allowed && !$doRun) {
+if ($allowed && !$doRun && !$doLock) {
     try {
         $currentDbName = (string) Db::val('SELECT DATABASE()');
         $currentTables = array_column(
@@ -323,6 +367,31 @@ $selfUrl = htmlspecialchars(
     <div class="sqlbox"><?= $selfUrl ?>?key=<?= htmlspecialchars($guardKey, ENT_QUOTES, 'UTF-8') ?></div>
   </div></div></div>
 
+<?php elseif ($doLock): ?>
+
+  <?php if ($lockError !== null): ?>
+    <div class="banner warn">قفل ضدِ رزرو هم‌زمان اضافه نشد.</div>
+    <div class="card"><div class="row"><div>
+      <div class="t">پیام دیتابیس</div>
+      <div class="sqlbox"><?= htmlspecialchars($lockError, ENT_QUOTES, 'UTF-8') ?></div>
+      <div class="d" style="margin-top:8px">
+        این قابلیت اختیاری است. اگر نسخه‌ی MySQL هاست قدیمی باشد
+        پشتیبانی نمی‌شود — <b>سایت بدون آن هم کاملاً کار می‌کند</b> و
+        فقط یک لایه‌ی محافظت آخر را ندارد. نگرانش نباشید.
+      </div>
+    </div></div></div>
+  <?php elseif ($lockAlready): ?>
+    <div class="banner ok">قفل ضدِ رزرو هم‌زمان از قبل فعال بود.</div>
+  <?php else: ?>
+    <div class="banner ok">قفل ضدِ رزرو هم‌زمان با موفقیت اضافه شد.</div>
+    <div class="card"><div class="row"><div class="d">
+      از این به بعد اگر دو نفر دقیقاً هم‌زمان یک ساعت را رزرو کنند،
+      نفر دوم پیام «این ساعت همین الان گرفته شد» می‌گیرد.
+    </div></div></div>
+  <?php endif; ?>
+
+  <p><a class="btn" href="<?= $selfUrl ?>?key=<?= htmlspecialchars($guardKey, ENT_QUOTES, 'UTF-8') ?>">بازگشت</a></p>
+
 <?php elseif (!$doRun): ?>
 
   <?php if ($dbError !== null): ?>
@@ -365,6 +434,18 @@ $selfUrl = htmlspecialchars(
     <p>
       <a class="btn" href="<?= $selfUrl ?>?key=<?= htmlspecialchars($guardKey, ENT_QUOTES, 'UTF-8') ?>&amp;run=1">
         ساخت جدول‌ها
+      </a>
+    </p>
+
+    <h2>قفل ضدِ رزرو هم‌زمان (اختیاری)</h2>
+    <p class="d">
+      جلوی این را می‌گیرد که دو نفر در یک لحظه یک ساعت را رزرو کنند.
+      بعد از ساخت جدول‌ها یک بار بزنید. اگر هاست پشتیبانی نکند فقط
+      پیام می‌دهد و هیچ چیزی خراب نمی‌شود.
+    </p>
+    <p>
+      <a class="btn" href="<?= $selfUrl ?>?key=<?= htmlspecialchars($guardKey, ENT_QUOTES, 'UTF-8') ?>&amp;lock=1">
+        افزودن قفل
       </a>
     </p>
   <?php endif; ?>

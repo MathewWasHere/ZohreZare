@@ -171,7 +171,7 @@ if ($dbOk) {
             $lock ? 'ok' : 'warn',
             $lock
                 ? 'فعال'
-                : 'اختیاری و فعال نیست — دستور ALTER انتهای schema.sql را اجرا کنید'
+                : 'اختیاری و فعال نیست — در صفحه‌ی install.php دکمه‌ی «افزودن قفل» را بزنید'
         );
 
         check('کاربران ثبت‌شده', 'ok',
@@ -201,7 +201,7 @@ if (is_file(__DIR__ . '/config.php')) {
             $credit['ok']
                 ? Jalali::fa((string) $credit['credit']) . ' پیامک'
                   . ($credit['credit'] > 20 ? '' : ' — رو به اتمام است')
-                : $credit['message']
+                : $credit['message'] . ' — برای دیدن پاسخ خام سامانه صفحه‌ی sms-test.php را باز کنید'
         );
 
         $senders = $sms->senders();
@@ -217,7 +217,11 @@ if (is_file(__DIR__ . '/config.php')) {
                       . Jalali::fa(implode('، ', $senders['senders']))
             );
         } else {
-            check('خط فرستنده', 'fail', $senders['message']);
+            check(
+                'خط فرستنده',
+                'fail',
+                $senders['message'] . ' — برای دیدن پاسخ خام سامانه صفحه‌ی sms-test.php را باز کنید'
+            );
         }
 
         /* متن قالب — مهم‌ترین بررسی.
