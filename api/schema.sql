@@ -12,7 +12,6 @@
 -- ==========================================================================
 
 SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
 
 -- ---------------- کاربران ----------------
 -- تاریخ تولد شمسی ذخیره می‌شود (نه میلادی) چون کاربر همان را
@@ -401,8 +400,6 @@ ON DUPLICATE KEY UPDATE
   name = VALUES(name), note = VALUES(note),
   duration_min = VALUES(duration_min), price = VALUES(price),
   sort_order = VALUES(sort_order);
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- ==========================================================================
 -- اختیاری — قفل ضدِ رزرو هم‌زمان
