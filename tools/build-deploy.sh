@@ -32,6 +32,7 @@ tar -cf - \
   --exclude='./.git' \
   --exclude='./.github' \
   --exclude='./dist' \
+  --exclude='./deploy' \
   --exclude='./tools' \
   --exclude='./node_modules' \
   --exclude='./server.py' \
@@ -89,6 +90,9 @@ for img in sorted((dist / "assets" / "img").rglob("*")):
         freed += size
 print(f"    {removed} فایل بلااستفاده حذف شد ({freed/1024/1024:.2f}MB)")
 PY
+
+echo "==> حذف پوشه‌های خالی"
+find "$DIST" -type d -empty -delete -print | sed "s|$DIST|    -|"
 
 echo "==> بررسی سلامت بسته"
 python3 - "$DIST" <<'PY'
