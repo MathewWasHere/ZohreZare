@@ -434,6 +434,30 @@ final class Sms
             return ['error' => 'پاسخ سامانه‌ی پیامک JSON نبود: ' . mb_substr(trim((string) $raw), 0, 200, 'UTF-8')];
         }
 
+        /* ── پوسته‌ی واقعی نیازپرداز ──────────────────────────────
+           مستندات فقط بخش داخلی را نشان می‌دهد، ولی سرور در عمل
+           همه‌چیز را داخل یک پاکت می‌گذارد:
+
+             {"success":true,
+              "result":{"credit":115.23,"resultCode":0},
+              "errorMessage":"","adminErrorMessage":""}
+
+           پس اول پاکت را باز می‌کنیم و اگر success دروغ بود، همان
+           errorMessage فارسیِ خود سامانه را به بالا برمی‌گردانیم. */
+        if (array_key_exists('success', $data) && array_key_exists('result', $data)) {
+            $ok    = !empty($data['success']);
+            $inner = $data['result'];
+            $msg   = trim((string) ($data['errorMessage'] ?? ''));
+            if ($msg === '') {
+                $msg = trim((string) ($data['adminErrorMessage'] ?? ''));
+            }
+
+            if (!$ok || !is_array($inner)) {
+                return ['error' => $msg !== '' ? $msg : 'سامانه‌ی پیامک درخواست را نپذیرفت.'];
+            }
+            $data = $inner;
+        }
+
         /* بعضی سرویس‌ها پاسخ را یک یا دو لایه بسته‌بندی می‌کنند —
            مثل {"GetCreditResult":{...}} یا {"d":{...}} یا {"data":{...}}.
            تا وقتی پوسته فقط یک کلید دارد، لایه‌ها را باز می‌کنیم. */
