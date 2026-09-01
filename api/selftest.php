@@ -241,7 +241,9 @@ if (is_file(__DIR__ . '/config.php')) {
         );
 
         foreach (['approved' => 'تأیید نوبت', 'rejected' => 'رد نوبت',
-                  'reminder' => 'یادآوری'] as $k => $label) {
+                  'reminder' => 'یادآوری',
+                  'received' => 'رسید ثبت درخواست',
+                  'admin_alert' => 'خبر به سالن'] as $k => $label) {
             $t = Config::get('sms.templates.' . $k);
             check(
                 'قالب پیامک ' . $label,

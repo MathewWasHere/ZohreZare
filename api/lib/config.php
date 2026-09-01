@@ -38,9 +38,11 @@ final class Config
             'timeout'   => 15,
             'templates' => [
                 'otp'      => 'کد تایید شما: {code}',
-                'approved' => null,
-                'rejected' => null,
-                'reminder' => null,
+                'approved'    => null,
+                'rejected'    => null,
+                'reminder'    => null,
+                'received'    => null,
+                'admin_alert' => null,
             ],
         ],
         'otp' => [

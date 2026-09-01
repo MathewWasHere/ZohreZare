@@ -253,6 +253,56 @@ final class Sms
     }
 
     /**
+     * پیامک اطلاع‌رسانی مربوط به یک نوبت.
+     *
+     * متغیرهای همیشه در دسترس: {date} {time} {service}
+     * با $extra می‌شود متغیر دیگری هم اضافه کرد (مثل {reason}).
+     *
+     * اگر قالب در تنظیمات خالی باشد هیچ کاری نمی‌کند — یعنی الگویش
+     * هنوز در پنل تأیید نشده و فرستادنش فقط خطای ۱۸ می‌دهد و
+     * اعتبار می‌سوزاند.
+     *
+     * شکست ارسال هرگز نباید کار اصلی را برگرداند؛ نوبت از پیامک
+     * مهم‌تر است. پس فقط لاگ می‌شود.
+     *
+     * @param array<string,mixed>        $appt سطر جدول appointments
+     * @param array<string,string|int>   $extra
+     * @param string|null                $to   اگر بدهید به جای مشتری
+     *                                         به همین شماره می‌رود
+     */
+    public static function notifyAppointment(
+        array $appt,
+        string $key,
+        array $extra = [],
+        ?string $to = null
+    ): void {
+        $tpl = Config::get('sms.templates.' . $key);
+        if (!is_string($tpl) || $tpl === '') {
+            return;
+        }
+
+        $phone = $to ?? Db::val('SELECT phone FROM users WHERE id = ?', [$appt['user_id']]);
+        if (!$phone) {
+            return;
+        }
+
+        try {
+            $vars = array_merge([
+                'date'    => Jalali::long((string) $appt['date']),
+                'time'    => Jalali::fa((string) $appt['time']),
+                'service' => (string) Db::val(
+                    'SELECT title FROM services WHERE id = ?',
+                    [$appt['service_id']]
+                ),
+            ], $extra);
+
+            (new self())->send((string) $phone, self::render($tpl, $vars), $key);
+        } catch (Throwable $e) {
+            error_log('[zz] پیامک اطلاع‌رسانی ناموفق: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * ثبت در جدول sms_log.
      *
      * متنِ کد تأیید عمداً ذخیره نمی‌شود — اگر روزی کسی به دیتابیس

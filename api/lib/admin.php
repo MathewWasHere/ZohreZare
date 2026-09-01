@@ -474,27 +474,6 @@ final class Admin
      */
     private static function notify(array $appt, string $template, array $extra = []): void
     {
-        $text = Config::get('sms.templates.' . $template);
-        if (!$text) {
-            return;
-        }
-
-        $phone = Db::val('SELECT phone FROM users WHERE id = ?', [$appt['user_id']]);
-        if (!$phone) {
-            return;
-        }
-
-        try {
-            $sms = new Sms();
-            $sms->send((string) $phone, Sms::render($text, array_merge([
-                'date'    => Jalali::long((string) $appt['date']),
-                'time'    => Jalali::fa((string) $appt['time']),
-                'service' => (string) Db::val(
-                    'SELECT title FROM services WHERE id = ?', [$appt['service_id']]
-                ),
-            ], $extra)), $template);
-        } catch (Throwable $e) {
-            error_log('[zz] پیامک اطلاع‌رسانی ناموفق: ' . $e->getMessage());
-        }
+        Sms::notifyAppointment($appt, $template, $extra);
     }
 }

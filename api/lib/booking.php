@@ -256,6 +256,23 @@ final class Booking
             throw $e;
         }
 
+        /* اطلاع‌رسانی — هیچ‌کدام نباید جلوی ثبت نوبت را بگیرد، پس
+           تک‌تک داخل notifyAppointment مهار شده‌اند. قالبی که در
+           تنظیمات خالی باشد اصلاً فرستاده نمی‌شود. */
+        $row = Db::one('SELECT * FROM appointments WHERE id = ?', [$id]);
+        if ($row) {
+            /* ۱) رسید برای مشتری: درخواستت ثبت شد، منتظر تماس باش */
+            Sms::notifyAppointment($row, 'received');
+
+            /* ۲) خبر به سالن: یک درخواست تازه منتظر تعیین تکلیف است */
+            foreach ((array) Config::get('admin_phones', []) as $adminPhone) {
+                Sms::notifyAppointment($row, 'admin_alert', [
+                    'name'  => ($user['name'] ?? '') !== '' ? (string) $user['name'] : 'بدون نام',
+                    'phone' => (string) ($user['phone'] ?? ''),
+                ], (string) $adminPhone);
+            }
+        }
+
         return self::publicOne($id);
     }
 
