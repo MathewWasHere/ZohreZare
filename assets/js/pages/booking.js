@@ -227,7 +227,11 @@
         '<strong>' + u.money(v.price) + ' ' + CUR + '</strong>' +
       '</div>' +
       '<p class="muted" style="font-size:var(--fs-xs);margin-top:var(--sp-3);margin-bottom:0;line-height:1.85;">' +
-        'پرداخت در محل انجام می‌شود. مبلغ نهایی ممکن است بعد از مشاوره‌ی حضوری کمی تغییر کند.' +
+        ((ZZ.config.approval && ZZ.config.approval.enabled)
+          ? 'با ثبت درخواست، این ساعت برای شما نگه داشته می‌شود و همکاران ما برای ' +
+            'هماهنگی نهایی با شما تماس می‌گیرند. پرداخت در محل انجام می‌شود و مبلغ ' +
+            'نهایی ممکن است بعد از مشاوره‌ی حضوری کمی تغییر کند.'
+          : 'پرداخت در محل انجام می‌شود. مبلغ نهایی ممکن است بعد از مشاوره‌ی حضوری کمی تغییر کند.') +
       '</p>';
   }
 
@@ -241,12 +245,16 @@
       var user = ZZ.auth.currentUser();
       notice.innerHTML = '<div class="note note--ok">' + ZZ.icon('checkCircle') +
         '<span>به‌عنوان <strong class="ltr phone-num">' + u.prettyPhoneHTML(user.phone) + '</strong> وارد شده‌اید.</span></div>';
-      btn.textContent = 'ثبت نهایی نوبت';
+      btn.textContent = (ZZ.config.approval && ZZ.config.approval.enabled)
+        ? 'ثبت درخواست نوبت'
+        : 'ثبت نهایی نوبت';
     } else {
       notice.innerHTML = '<div class="note note--info">' + ZZ.icon('info') +
         '<span>برای ثبت نوبت باید وارد حساب کاربری شوید. با زدن دکمه‌ی زیر، ' +
         'شماره‌تان را وارد می‌کنید و بعد از تایید کد، به همین‌جا برمی‌گردید.</span></div>';
-      btn.textContent = 'ورود و ثبت نوبت';
+      btn.textContent = (ZZ.config.approval && ZZ.config.approval.enabled)
+        ? 'ورود و ثبت درخواست'
+        : 'ورود و ثبت نوبت';
     }
   }
 
@@ -275,12 +283,21 @@
         clearDraft();
 
         var d = u.fromKey(appt.date);
-        u.$('#doneText').textContent =
-          'منتظرتان هستیم؛ ' + u.faDate(d) + ' ساعت ' + u.toFa(appt.time) + '.';
+        var pending = appt.status === 'pending';
+        var respHours = (ZZ.config.approval && ZZ.config.approval.responseHours) || 6;
+
+        var title = u.$('#doneTitle');
+        if (title) {
+          title.textContent = pending ? 'درخواستتان ثبت شد' : 'نوبتتان ثبت شد';
+        }
+        u.$('#doneText').textContent = pending
+          ? u.faDate(d) + ' ساعت ' + u.toFa(appt.time) + ' برای شما نگه داشته شد. ' +
+            'تا حدود ' + u.toFa(respHours) + ' ساعت آینده برای هماهنگی نهایی با شما تماس می‌گیریم.'
+          : 'منتظرتان هستیم؛ ' + u.faDate(d) + ' ساعت ' + u.toFa(appt.time) + '.';
         u.$('#doneSummary').innerHTML = summaryHTML();
 
         goStep(3);
-        ZZ.toast.ok('نوبت شما با موفقیت ثبت شد');
+        ZZ.toast.ok(pending ? 'درخواست شما ثبت شد' : 'نوبت شما با موفقیت ثبت شد');
       })
       .catch(function (err) {
         btn.classList.remove('is-loading');

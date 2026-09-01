@@ -24,8 +24,10 @@
   var B = '../../';
 
   var state = {
-    tab: 'appointments',   // appointments | past | cancelled | all
-    filter: 'upcoming',    // upcoming | past | cancelled | all
+    tab: 'appointments',   // appointments | days | services
+    /* پیش‌فرض روی صف درخواست‌هاست: اولین چیزی که مدیر باید ببیند
+       رزروهایی است که منتظر تماس و تأیید او هستند. */
+    filter: 'pending',     // pending | upcoming | past | cancelled | all
     q: '',
     selectedDay: null,
     services: null,        // کش خدمات برای تب ویرایش
@@ -76,6 +78,111 @@
   function invalidate(prefix) {
     Object.keys(state.cache).forEach(function (k) {
       if (!prefix || k.indexOf(prefix) === 0) delete state.cache[k];
+    });
+  }
+
+  /** بعد از هر تغییر روی نوبت‌ها: کش‌های مرتبط را دور بریز و دوباره بکش */
+  function afterChange() {
+    invalidate('appts:');
+    invalidate('slots:');
+    invalidate('days');
+    invalidate('stats');
+    render();
+  }
+
+  /**
+   * پنجره‌ی ثبت بیعانه.
+   *
+   * عمداً یک فرم ساده‌ی درون‌صفحه‌ای است و نه یک جریان پرداخت:
+   * پول بیرون از سایت جابه‌جا می‌شود (کارت‌به‌کارت یا نقدی) و اینجا
+   * فقط ثبت می‌شود که چقدر، با چه روشی و با چه کد پیگیری‌ای گرفته
+   * شده. هر وقت درگاه پرداخت اضافه شد، فقط یک روش دیگر به همین
+   * فرم اضافه می‌شود.
+   */
+  function openDepositDialog(apptId) {
+    var rows = state.cache['appts:' + state.filter + ':' + state.q] || [];
+    var row = rows.filter(function (r) { return r.appt.id === apptId; })[0];
+    var appt = row ? row.appt : null;
+    var dcfg = ZZ.config.deposit;
+    var current = (appt && appt.deposit) || null;
+
+    var host = u.el('div', { class: 'modal-host', id: 'depositModal' });
+    host.innerHTML =
+      '<div class="modal-back" data-close="1"></div>' +
+      '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="depTitle">' +
+        '<h3 id="depTitle" class="modal__title">ثبت بیعانه‌ی دریافت‌شده</h3>' +
+        '<p class="modal__hint">' +
+          (row && row.user
+            ? u.esc(row.user.name || 'بدون نام') + ' — ' +
+              '<span class="ltr">' + u.esc(row.user.phone || '') + '</span>'
+            : '') +
+        '</p>' +
+        '<label class="field"><span class="field__label">مبلغ (' + CUR + ')</span>' +
+          '<input class="input" id="depAmount" type="text" inputmode="numeric" ' +
+            'value="' + (current ? current.amount : (dcfg.suggested || '')) + '"></label>' +
+        '<label class="field"><span class="field__label">روش دریافت</span>' +
+          '<select class="input" id="depMethod">' +
+            (dcfg.methods || []).map(function (m) {
+              var sel = current && current.method === m.id ? ' selected' : '';
+              return '<option value="' + m.id + '"' + sel + '>' + u.esc(m.label) + '</option>';
+            }).join('') +
+          '</select></label>' +
+        '<label class="field"><span class="field__label">کد پیگیری / چهار رقم آخر کارت (اختیاری)</span>' +
+          '<input class="input ltr" id="depRef" type="text" ' +
+            'value="' + u.esc(current ? current.ref || '' : '') + '"></label>' +
+        '<div class="modal__actions">' +
+          (current
+            ? '<button class="btn btn--quiet btn--sm" data-clear="1">حذف بیعانه</button>'
+            : '') +
+          '<span style="flex:1;"></span>' +
+          '<button class="btn btn--ghost btn--sm" data-close="1">انصراف</button>' +
+          '<button class="btn btn--primary btn--sm" data-save="1">ثبت</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(host);
+    var amountInput = host.querySelector('#depAmount');
+    amountInput.focus();
+    amountInput.select();
+
+    function close() {
+      if (host.parentNode) host.parentNode.removeChild(host);
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+
+    host.addEventListener('click', function (ev) {
+      if (ev.target.closest('[data-close]')) { close(); return; }
+
+      if (ev.target.closest('[data-clear]')) {
+        close();
+        run(A.clearDeposit(apptId), function () {
+          ZZ.toast.ok('بیعانه حذف شد');
+          afterChange();
+        });
+        return;
+      }
+
+      if (ev.target.closest('[data-save]')) {
+        var payload = {
+          amount: host.querySelector('#depAmount').value,
+          method: host.querySelector('#depMethod').value,
+          ref: host.querySelector('#depRef').value
+        };
+        var res;
+        try {
+          res = A.setDeposit(apptId, payload);
+        } catch (err) {
+          ZZ.toast.error(err.message);
+          return;
+        }
+        close();
+        run(res, function () {
+          ZZ.toast.ok('بیعانه ثبت شد');
+          afterChange();
+        });
+      }
     });
   }
 
@@ -142,6 +249,49 @@
 
   /* ---------------- تب نوبت‌ها ---------------- */
 
+  /** برچسب فارسی روش پرداخت بیعانه */
+  function depMethodLabel(dep) {
+    var m = (ZZ.config.deposit.methods || []).filter(function (x) {
+      return x.id === dep.method;
+    })[0];
+    return m ? m.label : (dep.method || 'نامشخص');
+  }
+
+  /**
+   * دکمه‌های عملیات هر سطر.
+   *
+   * برای درخواستِ در انتظار، ترتیب دکمه‌ها عمداً همان ترتیب کاری
+   * مدیر است: اول تماس بگیر، اگر بیعانه گرفتی ثبتش کن، بعد تأیید
+   * یا رد کن.
+   */
+  function actionsHTML(a, r, canCancel) {
+    var btns = [];
+
+    if (a.status === 'pending') {
+      if (r.user && r.user.phone) {
+        var tel = 'tel:' + u.normalizePhone(r.user.phone).replace(/^0/, '+98');
+        btns.push('<a class="btn btn--ghost btn--sm" href="' + tel + '">' +
+                  ZZ.icon('phone', null, 14) + 'تماس</a>');
+      }
+      btns.push('<button class="btn btn--ghost btn--sm" data-deposit="' + a.id + '">' +
+                (a.deposit ? 'ویرایش بیعانه' : 'ثبت بیعانه') + '</button>');
+      btns.push('<button class="btn btn--primary btn--sm" data-approve="' + a.id + '">تأیید</button>');
+      btns.push('<button class="btn btn--quiet btn--sm" data-reject="' + a.id + '">رد</button>');
+    } else if (a.status === 'confirmed' && !r.isPast) {
+      btns.push('<button class="btn btn--ghost btn--sm" data-deposit="' + a.id + '">' +
+                (a.deposit ? 'ویرایش بیعانه' : 'ثبت بیعانه') + '</button>');
+      if (canCancel) {
+        btns.push('<button class="btn btn--quiet btn--sm" data-cancel="' + a.id + '">لغو</button>');
+      }
+    } else if (a.status === 'confirmed' && r.isPast) {
+      btns.push('<button class="btn btn--ghost btn--sm" data-done="' + a.id + '">انجام شد</button>');
+      btns.push('<button class="btn btn--quiet btn--sm" data-noshow="' + a.id + '">غیبت کرد</button>');
+    }
+
+    if (!btns.length) return '<span class="muted" style="font-size:var(--fs-xs);">—</span>';
+    return '<div class="row-actions">' + btns.join('') + '</div>';
+  }
+
   function renderAppointments() {
     var key = 'appts:' + state.filter + ':' + state.q;
     var rows = pull(key, function () {
@@ -170,6 +320,8 @@
         : ZZ.appointments.statusLabel(a);
       var d = u.fromKey(a.date);
       var canCancel = a.status === 'confirmed' && !r.isPast;
+      var dep = a.deposit || null;
+      var hist = r.history || null;
 
       return '<tr class="' + (a.status === 'cancelled' ? 'is-cancelled' : '') + '">' +
         '<td data-label="تاریخ">' +
@@ -185,13 +337,30 @@
           birthCell(r.user) +
         '</td>' +
         '<td data-label="تماس">' + telCell(r.user) + '</td>' +
-        '<td data-label="مبلغ"><span class="nowrap">' + u.money(a.price) + ' ' + CUR + '</span></td>' +
-        '<td data-label="وضعیت"><span class="badge ' + st.cls + '">' + st.text + '</span></td>' +
-        '<td data-label="عملیات">' +
-          (canCancel
-            ? '<button class="btn btn--quiet btn--sm" data-cancel="' + a.id + '">لغو</button>'
-            : '<span class="muted" style="font-size:var(--fs-xs);">—</span>') +
+        '<td data-label="مبلغ">' +
+          '<span class="nowrap">' + u.money(a.price) + ' ' + CUR + '</span>' +
+          (dep
+            ? '<div class="dep-chip" title="' + u.esc(depMethodLabel(dep) + (dep.ref ? ' — کد ' + dep.ref : '')) + '">' +
+                ZZ.icon('checkCircle', null, 13) +
+                'بیعانه ' + u.money(dep.amount) +
+              '</div>'
+            : '') +
         '</td>' +
+        '<td data-label="وضعیت">' +
+          '<span class="badge ' + st.cls + '">' + st.text + '</span>' +
+          (a.status === 'pending' && hist && hist.suggestDeposit
+            ? '<div class="risk-hint" title="این مراجعه‌کننده سابقه‌ی غیبت دارد">' +
+                ZZ.icon('info', null, 13) + 'سابقه‌ی ' + u.toFa(hist.noShow) + ' غیبت' +
+              '</div>'
+            : '') +
+          (a.status === 'pending' && hist && hist.isNew
+            ? '<div class="risk-hint risk-hint--new">مراجعه‌کننده‌ی جدید</div>'
+            : '') +
+          (a.status === 'rejected' && a.rejectReason
+            ? '<div class="risk-hint">' + u.esc(a.rejectReason) + '</div>'
+            : '') +
+        '</td>' +
+        '<td data-label="عملیات">' + actionsHTML(a, r, canCancel) + '</td>' +
       '</tr>' +
       (a.note
         ? '<tr class="' + (a.status === 'cancelled' ? 'is-cancelled' : '') + '">' +
@@ -206,7 +375,7 @@
       '<table class="admin-table">' +
         '<thead><tr>' +
           '<th>تاریخ و ساعت</th><th>خدمت</th><th>مراجعه‌کننده</th>' +
-          '<th>تماس</th><th>مبلغ</th><th>وضعیت</th><th></th>' +
+          '<th>تماس</th><th>مبلغ و بیعانه</th><th>وضعیت</th><th>عملیات</th>' +
         '</tr></thead>' +
         '<tbody>' + body + '</tbody>' +
       '</table>' +
@@ -564,10 +733,12 @@
                   { today: '—', upcoming: '—', users: '—', total: '—' });
     var user = ZZ.auth.currentUser() || {};
 
+    var pendingCount = (typeof st.pending === 'number') ? st.pending : 0;
     var filters = [
-      { id: 'upcoming', label: 'پیش رو' },
+      { id: 'pending', label: 'در انتظار تأیید', count: pendingCount },
+      { id: 'upcoming', label: 'تأییدشده' },
       { id: 'past', label: 'انجام شده' },
-      { id: 'cancelled', label: 'لغو شده' },
+      { id: 'cancelled', label: 'لغو / رد شده' },
       { id: 'all', label: 'همه' }
     ];
 
@@ -594,10 +765,12 @@
       '<div class="container">' +
         /* ---- آمار ---- */
         '<div class="admin-stats">' +
+          '<div class="admin-stat' + (pendingCount ? ' admin-stat--wait' : '') + '">' +
+            '<strong>' + u.toFa(st.pending === undefined ? '—' : st.pending) + '</strong>' +
+            '<span>در انتظار تأیید</span></div>' +
           '<div class="admin-stat admin-stat--accent"><strong>' + u.toFa(st.today) + '</strong><span>نوبت امروز</span></div>' +
           '<div class="admin-stat"><strong>' + u.toFa(st.upcoming) + '</strong><span>نوبت پیش رو</span></div>' +
           '<div class="admin-stat"><strong>' + u.toFa(st.users) + '</strong><span>مراجعه‌کننده</span></div>' +
-          '<div class="admin-stat"><strong>' + u.toFa(st.total) + '</strong><span>مجموع نوبت‌ها</span></div>' +
         '</div>' +
 
         /* ---- تب‌ها ---- */
@@ -618,7 +791,9 @@
               filters.map(function (f) {
                 return '<button class="btn ' +
                   (state.filter === f.id ? 'btn--primary' : 'btn--ghost') +
-                  ' btn--sm" data-filter="' + f.id + '">' + f.label + '</button>';
+                  ' btn--sm" data-filter="' + f.id + '">' + f.label +
+                  (f.count ? '<span class="count-dot">' + u.toFa(f.count) + '</span>' : '') +
+                  '</button>';
               }).join('') +
               '<span class="admin-toolbar__spacer"></span>' +
               '<input class="input" id="searchInput" type="search" placeholder="جست‌وجوی نام، شماره یا خدمت…" ' +
@@ -701,6 +876,62 @@
           invalidate('slots:' + state.selectedDay);
           invalidate('days');
           render();
+        });
+        return;
+      }
+
+      /* ---- تأیید درخواست ---- */
+      var appr = e.target.closest('[data-approve]');
+      if (appr) {
+        appr.disabled = true;
+        run(A.approve(appr.dataset.approve), function (res) {
+          if (!res) { ZZ.toast.error('این درخواست دیگر در انتظار تأیید نیست.'); }
+          else { ZZ.toast.ok('نوبت تأیید شد'); }
+          afterChange();
+        });
+        return;
+      }
+
+      /* ---- رد درخواست ---- */
+      var rej = e.target.closest('[data-reject]');
+      if (rej) {
+        var why = global.prompt(
+          'دلیل رد درخواست (به مراجعه‌کننده نشان داده می‌شود):',
+          'در این ساعت امکان پذیرش نبود'
+        );
+        if (why === null) return;
+        rej.disabled = true;
+        run(A.reject(rej.dataset.reject, why), function (res) {
+          if (!res) { ZZ.toast.error('این درخواست دیگر در انتظار تأیید نیست.'); }
+          else { ZZ.toast.ok('درخواست رد شد و ساعت آزاد شد'); }
+          afterChange();
+        });
+        return;
+      }
+
+      /* ---- ثبت بیعانه ---- */
+      var depBtn = e.target.closest('[data-deposit]');
+      if (depBtn) {
+        openDepositDialog(depBtn.dataset.deposit);
+        return;
+      }
+
+      /* ---- انجام شد / غیبت ---- */
+      var doneBtn = e.target.closest('[data-done]');
+      if (doneBtn) {
+        run(A.markDone(doneBtn.dataset.done), function () {
+          ZZ.toast.ok('نوبت انجام‌شده ثبت شد');
+          afterChange();
+        });
+        return;
+      }
+
+      var nsBtn = e.target.closest('[data-noshow]');
+      if (nsBtn) {
+        if (!global.confirm('غیبت این مراجعه‌کننده ثبت شود؟ دفعه‌ی بعد به شما یادآوری می‌شود که بیعانه بگیرید.')) return;
+        run(A.markNoShow(nsBtn.dataset.noshow), function () {
+          ZZ.toast.ok('غیبت ثبت شد');
+          afterChange();
         });
         return;
       }

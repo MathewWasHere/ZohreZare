@@ -26,6 +26,12 @@ cd "$ROOT"
 echo "==> بررسی چیدمان موبایل"
 python3 "$ROOT/tools/check-mobile-css.py" | tail -3
 
+echo "==> بررسی جا شدن هدر در گوشی‌های باریک"
+python3 "$ROOT/tools/header-fit.py" | tail -2
+
+echo "==> بررسی جریان تأیید رزرو"
+node "$ROOT/tools/check-booking-flow.js" | tail -2
+
 echo "==> پاک‌سازی خروجی قبلی"
 rm -rf "$DIST" "$ZIP"
 mkdir -p "$DIST"

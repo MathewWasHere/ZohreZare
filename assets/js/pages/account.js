@@ -18,11 +18,19 @@
     var d = u.fromKey(a.date);
     var st = ZZ.appointments.statusLabel(a);
 
+    var isPending = a.status === 'pending';
     var isUpcoming = a.status === 'confirmed' && !u.isPast(a.date, a.time);
-    var canCancel = isUpcoming && u.hoursUntil(a.date, a.time) >= ZZ.config.booking.cancelWindowHours;
+    /* درخواستی که هنوز تأیید نشده هر وقت خواست قابل لغو است؛
+       محدودیت ۲۴ ساعته فقط برای نوبت قطعی‌شده معنا دارد. */
+    var canCancel = isPending ||
+      (isUpcoming && u.hoursUntil(a.date, a.time) >= ZZ.config.booking.cancelWindowHours);
+    var closed = a.status === 'cancelled' || a.status === 'rejected';
+    var dep = ZZ.appointments.depositLabel ? ZZ.appointments.depositLabel(a) : null;
+    var respHours = (ZZ.config.approval && ZZ.config.approval.responseHours) || 6;
 
     return '' +
-      '<article class="appt' + (a.status === 'cancelled' ? ' is-cancelled' : '') + '" data-id="' + a.id + '">' +
+      '<article class="appt' + (closed ? ' is-cancelled' : '') +
+        (isPending ? ' appt--pending' : '') + '" data-id="' + a.id + '">' +
         '<div class="appt__date">' +
           '<span class="appt__day">' + u.toFa(new Intl.DateTimeFormat('fa-IR-u-ca-persian', { day: 'numeric' }).format(d)) + '</span>' +
           '<span class="appt__month">' + u.esc(new Intl.DateTimeFormat('fa-IR-u-ca-persian', { month: 'long' }).format(d)) + '</span>' +
@@ -46,15 +54,41 @@
 
           (a.note ? '<div class="appt__note">' + ZZ.icon('edit', null, 14) + ' ' + u.esc(a.note) + '</div>' : '') +
 
+          /* توضیح وضعیت — مهم‌ترین چیزی که مشتری بعد از ثبت
+             درخواست می‌خواهد بداند: حالا چه اتفاقی می‌افتد؟ */
+          (isPending
+            ? '<div class="appt__state appt__state--wait">' + ZZ.icon('clock', null, 15) +
+                '<span>این ساعت برای شما نگه داشته شده است. تا حدود ' +
+                u.toFa(respHours) + ' ساعت آینده برای هماهنگی نهایی با شما تماس می‌گیریم.</span>' +
+              '</div>'
+            : '') +
+          (a.status === 'rejected'
+            ? '<div class="appt__state appt__state--no">' + ZZ.icon('info', null, 15) +
+                '<span>' + u.esc(a.rejectReason || 'متأسفانه این درخواست پذیرفته نشد.') +
+                ' می‌توانید ساعت دیگری را انتخاب کنید.</span>' +
+              '</div>'
+            : '') +
+          (dep
+            ? '<div class="appt__state appt__state--ok">' + ZZ.icon('checkCircle', null, 15) +
+                '<span>بیعانه‌ی ' + u.money(dep.amount) + ' ' + CUR + ' دریافت شد' +
+                (dep.method ? ' (' + u.esc(dep.method) + ')' : '') + '.' +
+                ' این مبلغ از صورت‌حساب نهایی کم می‌شود.</span>' +
+              '</div>'
+            : '') +
+
           '<div class="appt__actions">' +
             (s ? '<a class="btn btn--soft btn--sm" href="' + B + 'service.html?s=' + s.slug + '">درباره‌ی این خدمت</a>' : '') +
             (canCancel
-              ? '<button class="btn btn--quiet btn--sm" data-cancel="' + a.id + '">لغو نوبت</button>'
+              ? '<button class="btn btn--quiet btn--sm" data-cancel="' + a.id + '">' +
+                (isPending ? 'انصراف از درخواست' : 'لغو نوبت') + '</button>'
               : (isUpcoming
                   ? '<span class="badge badge--muted">برای لغو تماس بگیرید</span>'
                   : '')) +
-            (!isUpcoming && a.status !== 'cancelled' && s
+            (!isUpcoming && !isPending && !closed && s
               ? '<a class="btn btn--ghost btn--sm" href="' + B + 'booking.html?service=' + s.id + '">رزرو دوباره</a>'
+              : '') +
+            (a.status === 'rejected' && s
+              ? '<a class="btn btn--primary btn--sm" href="' + B + 'booking.html?service=' + s.id + '">انتخاب ساعت دیگر</a>'
               : '') +
           '</div>' +
         '</div>' +

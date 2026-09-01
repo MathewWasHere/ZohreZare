@@ -2544,3 +2544,163 @@
   }
 }
 
+
+/* ==========================================================================
+   جریان تأیید رزرو و بیعانه
+   --------------------------------------------------------------------------
+   سایت بدون درگاه پرداخت کار می‌کند: رزرو با وضعیت «در انتظار تأیید»
+   ثبت می‌شود، مدیر تماس می‌گیرد و بعد تأییدش می‌کند. این بخش استایلِ
+   صف درخواست‌ها، نشان بیعانه و پنجره‌ی ثبت آن است.
+   ========================================================================== */
+
+/* کارت آماری که منتظر رسیدگی است — کمی برجسته‌تر از بقیه */
+.admin-stat--wait {
+  border-color: var(--gold-300);
+  background: var(--warn-50);
+}
+.admin-stat--wait strong { color: var(--warn-600); }
+
+/* با اضافه شدن کارت «در انتظار تأیید» تعداد کارت‌ها ۵ تا شد */
+@media (min-width: 760px) {
+  .admin-stats { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* شمارنده‌ی کنار دکمه‌ی فیلتر «در انتظار تأیید» */
+.count-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 5px;
+  margin-inline-start: 6px;
+  border-radius: var(--r-full);
+  background: var(--rose-500);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.btn--primary .count-dot {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* نشان «بیعانه دریافت شد» زیر مبلغ */
+.dep-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--success-50);
+  color: var(--success-500);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* یادآوری ریسک کنار وضعیت (سابقه‌ی غیبت، مراجعه‌کننده‌ی جدید، دلیل رد) */
+.risk-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.6875rem;
+  line-height: 1.6;
+  color: var(--danger-500);
+}
+.risk-hint--new { color: var(--text-muted); }
+
+/* ستون عملیات — روی موبایل زیر هم می‌ریزند */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.row-actions .btn { white-space: nowrap; }
+
+/* ---------- پنجره‌ی ثبت بیعانه ---------- */
+.modal-host {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+}
+.modal-back {
+  position: absolute;
+  inset: 0;
+  background: rgba(21, 16, 14, 0.55);
+  backdrop-filter: blur(2px);
+}
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.18s var(--ease);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.modal__title {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-lg);
+}
+.modal__hint {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.modal__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal { animation: none; }
+}
+
+/* ---------- توضیح وضعیت روی کارت نوبتِ مشتری ----------
+   بعد از ثبت درخواست، مهم‌ترین سؤال مشتری این است که «حالا چه
+   می‌شود؟». این نوار همان را جواب می‌دهد. */
+.appt__state {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1.8;
+}
+.appt__state svg { flex-shrink: 0; margin-top: 3px; }
+
+.appt__state--wait {
+  background: var(--warn-50);
+  color: var(--warn-600);
+}
+.appt__state--ok {
+  background: var(--success-50);
+  color: var(--success-500);
+}
+.appt__state--no {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+
+/* کارت درخواستِ در انتظار — لبه‌ی طلایی تا از بقیه جدا دیده شود */
+.appt--pending {
+  border-color: var(--gold-300);
+}
