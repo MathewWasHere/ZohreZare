@@ -180,10 +180,18 @@ ACTIONS = HEADER_CHAIN + [el("div", "header__actions")]
 
 TESTS = [
     # (توضیح، عرض، عنصر، اجداد، ویژگی، مقدار انتظاری)
+    ("نوشته‌ی «مشاوره رایگان» در موبایل دیده می‌شود",
+     360, el("span", "call-btn__text"), ACTIONS + [el("a", "call-btn")], "display", "flex"),
     ("شماره‌ی تماس در موبایل مخفی است",
-     360, el("span", "call-btn__text"), ACTIONS + [el("a", "call-btn")], "display", "none"),
-    ("شماره‌ی تماس در دسکتاپ دیده می‌شود",
+     360, el("span", "call-btn__num", "ltr", "phone-num"),
+     ACTIONS + [el("a", "call-btn"), el("span", "call-btn__text")], "display", "none"),
+    ("در گوشی‌های خیلی باریک دکمه‌ی تماس فقط آیکون است",
+     320, el("span", "call-btn__text"), ACTIONS + [el("a", "call-btn")], "display", "none"),
+    ("متن دکمه‌ی تماس در دسکتاپ دیده می‌شود",
      1280, el("span", "call-btn__text"), ACTIONS + [el("a", "call-btn")], "display", "flex"),
+    ("شماره‌ی تماس در دسکتاپ دیده می‌شود",
+     1280, el("span", "call-btn__num", "ltr", "phone-num"),
+     ACTIONS + [el("a", "call-btn"), el("span", "call-btn__text")], "display", None),
     ("زیرنویس لوگو در موبایل مخفی است",
      360, el("span", "brand__sub", "latin"), HEADER_CHAIN + [el("a", "brand")], "display", "none"),
     ("زیرنویس لوگو در دسکتاپ دیده می‌شود",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zohrezare-v7';
+const CACHE_NAME = 'zohrezare-v8';
 const STATIC_ASSETS = [
   './',
   './index.html',

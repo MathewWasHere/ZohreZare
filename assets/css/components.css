@@ -1029,12 +1029,17 @@ select.input {
 }
 
 @media (max-width: 859px) {
-  /* دکمه‌ی تماس فقط آیکون می‌شود */
+  /* دکمه‌ی تماس جمع‌وجور می‌شود، ولی نوشته‌ی «مشاوره رایگان» می‌ماند.
+     نسخه‌ی قبلی کل متن را برمی‌داشت و دکمه به یک دایره‌ی بی‌نام تبدیل
+     می‌شد؛ حالا فقط آن‌قدر کوچک می‌شود که جا بگیرد. */
   .call-btn {
-    padding: 0.42rem;
+    padding-block: 0.3rem;
+    padding-inline: 0.4rem 0.7rem;
+    gap: 0.4rem;
   }
-  .call-btn__text {
-    display: none;
+  .call-btn__icon {
+    width: 27px;
+    height: 27px;
   }
 
   .header__cta {
@@ -1054,6 +1059,26 @@ select.input {
   .burger {
     width: 42px;
     height: 42px;
+  }
+}
+
+/* از اینجا به پایین دیگر جای دو خط متن نیست: شماره‌ی تماس برداشته
+   می‌شود و «مشاوره رایگان» تک‌خطی کنار آیکون می‌نشیند. خودِ دکمه
+   شماره‌گیر است، پس دیدن شماره ضروری نیست. */
+@media (max-width: 699px) {
+  .call-btn__num {
+    display: none;
+  }
+  .call-btn__text {
+    flex-direction: row;
+    align-items: center;
+  }
+  .call-btn__label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--ink-800);
+    letter-spacing: 0;
+    white-space: nowrap;
   }
 }
 
@@ -1079,16 +1104,73 @@ select.input {
   }
 }
 
-/* گوشی‌های خیلی باریک (۳۲۰ تا ۳۶۰ پیکسل) */
+/* گوشی‌های متداول (تا ۴۸۰ پیکسل) — از اینجا فضا واقعاً تنگ می‌شود.
+   هر عنصر کمی جمع می‌شود تا نوشته‌ی دکمه‌ی تماس جا بماند و در عین حال
+   دکمه‌ی «رزرو نوبت» کامل بماند. */
+@media (max-width: 480px) {
+  .header .container {
+    padding-inline: var(--sp-4);
+  }
+  .header__inner {
+    gap: var(--sp-2);
+  }
+  .header__actions {
+    gap: 5px;
+  }
+  .brand__logo {
+    height: 24px;
+  }
+  .call-btn {
+    padding-inline: 0.32rem 0.6rem;
+    gap: 0.32rem;
+  }
+  .call-btn__icon {
+    width: 24px;
+    height: 24px;
+  }
+  .call-btn__label {
+    font-size: 0.65rem;
+  }
+  .header__cta {
+    padding: 0.4rem 0.6rem;
+  }
+}
+
+/* گوشی‌های خیلی باریک (۳۲۰ تا ۳۸۰ پیکسل) */
 @media (max-width: 380px) {
   .container {
     padding-inline: var(--sp-4);
   }
   .brand__logo {
-    height: 24px;
+    height: 22px;
+  }
+  /* بین آیکون و نوشته، نوشته مهم‌تر است: آیکون کنار می‌رود.
+     دکمه همچنان tel: است و با یک لمس شماره‌گیری می‌کند. */
+  .call-btn__icon {
+    display: none;
+  }
+  .call-btn {
+    padding-inline: 0.6rem;
+    gap: 0;
   }
   .header__cta {
-    padding: 0.4rem 0.6rem;
+    padding: 0.4rem 0.5rem;
+  }
+}
+
+/* باریک‌تر از این (گوشی‌های خیلی قدیمی) دیگر جای نوشته نیست؛
+   به همان دکمه‌ی آیکونی برمی‌گردیم تا چیزی از لبه بیرون نزند. */
+@media (max-width: 340px) {
+  .call-btn__icon {
+    display: grid;
+    width: 24px;
+    height: 24px;
+  }
+  .call-btn__text {
+    display: none;
+  }
+  .call-btn {
+    padding-inline: 0.4rem;
   }
 }
 
