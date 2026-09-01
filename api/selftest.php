@@ -19,6 +19,10 @@ require __DIR__ . '/lib/jalali.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/sms.php';
 
+/* این صفحه HTML چاپ می‌کند، پس خطای اتصال باید استثنا شود نه
+   پاسخ JSON — وگرنه وسط صفحه یک تکه JSON ظاهر می‌شود. */
+Db::throwOnConnectError();
+
 $rows = [];
 $fail = 0;
 $warn = 0;

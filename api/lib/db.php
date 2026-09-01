@@ -16,6 +16,19 @@ final class Db
     /** @var PDO|null */
     private static $pdo = null;
 
+    /**
+     * صفحه‌های تشخیصی (install.php و selftest.php) خروجی HTML دارند.
+     * برای آن‌ها Http::fail بد است، چون وسط صفحه JSON چاپ می‌کند و
+     * exit می‌زند. با روشن کردن این پرچم، خطای اتصال به‌جای پاسخ
+     * JSON یک استثنا می‌شود تا خودشان مدیریتش کنند.
+     */
+    private static $throwOnConnectError = false;
+
+    public static function throwOnConnectError(bool $on = true): void
+    {
+        self::$throwOnConnectError = $on;
+    }
+
     public static function conn(): PDO
     {
         if (self::$pdo !== null) {
@@ -37,6 +50,10 @@ final class Db
         } catch (PDOException $e) {
             /* پیام واقعی فقط در لاگ؛ کاربر نباید نام دیتابیس را ببیند */
             error_log('[zz] اتصال به دیتابیس ناموفق: ' . $e->getMessage());
+
+            if (self::$throwOnConnectError) {
+                throw $e;
+            }
             Http::fail(503, 'ارتباط با پایگاه داده برقرار نشد. لطفاً کمی بعد دوباره تلاش کنید.');
         }
 

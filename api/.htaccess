@@ -14,7 +14,7 @@ DirectoryIndex index.php
   RewriteBase /api/
 
   # فایل‌های تشخیصی مستقیم اجرا می‌شوند
-  RewriteRule ^(selftest|sms-test)\.php$ - [L]
+  RewriteRule ^(selftest|sms-test|install)\.php$ - [L]
 
   # هر چیز دیگری که فایل یا پوشه‌ی واقعی نیست → index.php
   RewriteCond %{REQUEST_FILENAME} !-f
