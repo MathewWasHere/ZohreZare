@@ -20,9 +20,11 @@
 
    احراز هویت: مستندات REST نام کاربری و رمز عبور می‌خواهد، ولی کدهای
    خطای ۲۵ و ۷- مربوط به ApiKey هستند و SDK رسمی فقط با کلید کار می‌کند.
-   پس کلید در همان جای رمز عبور فرستاده می‌شود. اگر حساب شما این را
-   نپذیرفت، در config مقدار auth_mode را روی 'password' بگذارید و رمز
-   پنل را در api_key بنویسید — رفتار کد یکی است، فقط برای وضوح جداست.
+   یعنی سامانه هر دو را می‌پذیرد. تنظیم auth_mode تعیین می‌کند کدام
+   یک در جای رمز عبور بنشیند:
+       'username_password' → رمز پنل   (حالت پیش‌فرض و مستندشده)
+       'api_key'           → کلید API
+   اگر یکی جواب نداد، فقط همین یک مقدار را در config عوض کنید.
    ========================================================================== */
 
 declare(strict_types=1);
@@ -32,10 +34,13 @@ final class Sms
     /** @var array<string,mixed> */
     private array $cfg;
 
-    /** @param array<string,mixed> $cfg بخش sms از config */
-    public function __construct(array $cfg)
+    /**
+     * @param array<string,mixed>|null $cfg بخش sms از config —
+     *        اگر ندهید، خودش از Config می‌خواند.
+     */
+    public function __construct(?array $cfg = null)
     {
-        $this->cfg = $cfg;
+        $this->cfg = $cfg ?? (array) Config::get('sms', []);
     }
 
     /* ------------------------------------------------------------------
@@ -100,16 +105,26 @@ final class Sms
      * @return string|null اگر قالب تعریف نشده باشد null — یعنی این نوع
      *                     پیامک هنوز الگوی تأییدشده ندارد و نباید فرستاده شود
      */
-    public function render(string $key, array $vars = []): ?string
+    public static function render(string $tpl, array $vars = []): string
+    {
+        foreach ($vars as $k => $v) {
+            $tpl = str_replace('{' . $k . '}', (string) $v, $tpl);
+        }
+        return $tpl;
+    }
+
+    /**
+     * متن یک قالبِ نام‌گذاری‌شده را می‌سازد.
+     * اگر قالب در تنظیمات خالی باشد null برمی‌گرداند — یعنی این نوع
+     * پیامک هنوز الگوی تأییدشده ندارد و نباید فرستاده شود.
+     */
+    public function template(string $key, array $vars = []): ?string
     {
         $tpl = $this->cfg['templates'][$key] ?? null;
         if (!is_string($tpl) || $tpl === '') {
             return null;
         }
-        foreach ($vars as $k => $v) {
-            $tpl = str_replace('{' . $k . '}', (string) $v, $tpl);
-        }
-        return $tpl;
+        return self::render($tpl, $vars);
     }
 
     /* ------------------------------------------------------------------
@@ -121,7 +136,7 @@ final class Sms
      *
      * @return array{ok:bool, code:int, message:string, id:int|null, skipped?:bool}
      */
-    public function send(string $to, string $text): array
+    public function send(string $to, string $text, string $tag = ''): array
     {
         $to = self::normalizePhone($to);
         if ($to === null) {
@@ -140,7 +155,7 @@ final class Sms
             ];
         }
 
-        $res = $this->call('SendSms', [
+        $res = $this->call('SendBatchSms', [
             'fromNumber'     => (string) ($this->cfg['from'] ?? ''),
             'toNumbers'      => $to,
             'messageContent' => $text,
@@ -148,28 +163,61 @@ final class Sms
         ]);
 
         if (isset($res['error'])) {
-            return ['ok' => false, 'code' => -100, 'message' => $res['error'], 'id' => null];
+            $out = ['ok' => false, 'code' => -100, 'message' => $res['error'], 'id' => null];
+            self::log($to, $tag, $text, $out);
+            return $out;
         }
 
         $code = (int) ($res['ResultCode'] ?? -100);
-        return [
+        $out  = [
             'ok'      => self::isOk($code),
             'code'    => $code,
             'message' => self::describe($code),
-            'id'      => isset($res['SmsId']) ? (int) $res['SmsId']
-                       : (isset($res['BatchSmsId']) ? (int) $res['BatchSmsId'] : null),
+            'id'      => isset($res['BatchSmsId']) ? (int) $res['BatchSmsId']
+                       : (isset($res['SmsId']) ? (int) $res['SmsId'] : null),
         ];
+        self::log($to, $tag, $text, $out);
+        return $out;
     }
 
     /** ارسال کد یک‌بارمصرف با قالب تأییدشده */
     public function sendOtp(string $to, string $code): array
     {
-        $text = $this->render('otp', ['code' => $code]);
+        $text = $this->template('otp', ['code' => $code]);
         if ($text === null) {
             return ['ok' => false, 'code' => 17, 'id' => null,
                     'message' => 'قالب پیامک کد تأیید در تنظیمات خالی است.'];
         }
-        return $this->send($to, $text);
+        return $this->send($to, $text, 'otp');
+    }
+
+    /**
+     * ثبت در جدول sms_log.
+     *
+     * متنِ کد تأیید عمداً ذخیره نمی‌شود — اگر روزی کسی به دیتابیس
+     * دسترسی پیدا کند، نباید بتواند کد در جریان کسی را از لاگ بخواند.
+     */
+    private static function log(string $to, string $tag, string $text, array $res): void
+    {
+        if (!class_exists('Db')) {
+            return;
+        }
+        try {
+            Db::run(
+                'INSERT INTO sms_log (phone, tag, body, result_code, message, batch_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                [
+                    $to,
+                    mb_substr($tag, 0, 20, 'UTF-8'),
+                    $tag === 'otp' ? '(کد تأیید — ثبت نمی‌شود)' : mb_substr($text, 0, 400, 'UTF-8'),
+                    (int) $res['code'],
+                    mb_substr((string) $res['message'], 0, 200, 'UTF-8'),
+                    $res['id'],
+                ]
+            );
+        } catch (Throwable $e) {
+            /* نبودن جدول لاگ نباید جلوی ارسال پیامک را بگیرد */
+        }
     }
 
     /* ------------------------------------------------------------------
@@ -236,10 +284,15 @@ final class Sms
         $base = rtrim((string) ($this->cfg['base_url'] ?? ''), '/');
         $url  = $base . '/' . $method;
 
-        /* کلید API در همان جای رمز عبور می‌نشیند — توضیحش بالای فایل */
+        /* auth_mode تعیین می‌کند رمز پنل برود یا کلید API — توضیحش
+           بالای فایل */
+        $secret = ($this->cfg['auth_mode'] ?? 'username_password') === 'api_key'
+            ? (string) ($this->cfg['api_key'] ?? '')
+            : (string) ($this->cfg['password'] ?? '');
+
         $body = array_merge([
             'userName' => (string) ($this->cfg['username'] ?? ''),
-            'password' => (string) ($this->cfg['api_key'] ?? ''),
+            'password' => $secret,
         ], $params);
 
         $json = json_encode($body, JSON_UNESCAPED_UNICODE);

@@ -120,6 +120,31 @@
         return api.get('/api/admin/appointments' + (q ? '?' + q : ''));
       },
       cancel: function (id) { return api.del('/api/admin/appointments/' + id); },
+
+      /* ---- جریان تأیید (بدون درگاه پرداخت) ----
+         مدیر درخواست را می‌بیند، تماس می‌گیرد، بعد تصمیم می‌گیرد. */
+      approve: function (id) {
+        return api.post('/api/admin/appointments/' + id + '/approve', {});
+      },
+      reject: function (id, reason) {
+        return api.post('/api/admin/appointments/' + id + '/reject', { reason: reason || '' });
+      },
+      revert: function (id) {
+        return api.post('/api/admin/appointments/' + id + '/revert', {});
+      },
+      markDone: function (id) {
+        return api.post('/api/admin/appointments/' + id + '/done', {});
+      },
+      markNoShow: function (id) {
+        return api.post('/api/admin/appointments/' + id + '/no-show', {});
+      },
+      setDeposit: function (id, data) {
+        return api.post('/api/admin/appointments/' + id + '/deposit', data);
+      },
+      clearDeposit: function (id) {
+        return api.del('/api/admin/appointments/' + id + '/deposit');
+      },
+
       daySlots: function (dateKey) {
         return api.get('/api/admin/day-slots?date=' + encodeURIComponent(dateKey));
       },

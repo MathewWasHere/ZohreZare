@@ -74,7 +74,7 @@ const SECRET_PATTERNS = [
 
 const RISKY = [
   { re: /\beval\s*\(/, msg: 'استفاده از eval' },
-  { re: /\b(exec|shell_exec|passthru|system|popen)\s*\(/, msg: 'اجرای دستور سیستمی' },
+  { re: /(?<![>:\w$])(exec|shell_exec|passthru|system|popen)\s*\(/, msg: 'اجرای دستور سیستمی' },
   { re: /\$_(GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\)?\s*;?\s*$/m, msg: null }
 ];
 

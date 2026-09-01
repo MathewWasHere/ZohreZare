@@ -58,6 +58,10 @@
       note: a.note || '',
       isPast: a.is_past,
       canCancel: a.can_cancel,
+      /* رکورد بیعانه — پنل مدیریت و صفحه‌ی حساب هر دو می‌خوانندش */
+      deposit: a.deposit || null,
+      rejectReason: a.reject_reason || '',
+      createdAt: a.created_at || null,
       user: a.user || null
     };
   }
@@ -300,7 +304,9 @@
           return {
             today: s.today, upcoming: s.upcoming, total: s.total,
             cancelled: s.cancelled, users: s.users,
-            revenue: s.revenue_done, birthdays: s.birthdays_today
+            revenue: s.revenue_done, birthdays: s.birthdays_today,
+            /* شمارنده‌های جریان تأیید */
+            pending: s.pending, noShow: s.no_show, deposits: s.deposits
           };
         });
       },
@@ -319,7 +325,10 @@
               user: a.user,
               service: { id: a.serviceId, title: a.serviceTitle },
               variant: { id: a.variantId, name: a.variantName },
-              isPast: a.isPast
+              isPast: a.isPast,
+              /* سابقه‌ی مراجعه‌کننده — سرور حسابش می‌کند تا پنل به ازای
+                 هر ردیف یک درخواست جدا نزند */
+              history: row.history || null
             };
           });
         });
@@ -341,6 +350,38 @@
         return ZZ.api.admin.toggleSlot(dateKey, time).then(function (r) { return r.blocked; });
       },
       cancelAppointment: function (id) { return ZZ.api.admin.cancel(id); },
+
+      /* ---- جریان تأیید ---- */
+      approve: function (id) { return ZZ.api.admin.approve(id); },
+      reject: function (id, reason) { return ZZ.api.admin.reject(id, reason); },
+      revertToPending: function (id) { return ZZ.api.admin.revert(id); },
+      markDone: function (id) { return ZZ.api.admin.markDone(id); },
+      markNoShow: function (id) { return ZZ.api.admin.markNoShow(id); },
+
+      setDeposit: function (id, data) {
+        /* مبلغ همین‌جا بررسی می‌شود، نه فقط روی سرور.
+           پنل مدیریت این متد را داخل try/catch و به‌صورت هم‌گام صدا
+           می‌زند و انتظار دارد ورودی غلط بی‌درنگ خطا بدهد — اگر
+           منتظر پاسخ سرور بمانیم، آن رفتار می‌شکند. */
+        var amount = parseInt(u.toEn(String(data.amount || '')).replace(/\D/g, ''), 10);
+        if (!amount || amount <= 0) {
+          throw new Error('مبلغ بیعانه را درست وارد کنید.');
+        }
+        return ZZ.api.admin.setDeposit(id, {
+          amount: amount,
+          method: data.method || 'card',
+          ref: data.ref || '',
+          note: data.note || ''
+        });
+      },
+
+      clearDeposit: function (id) { return ZZ.api.admin.clearDeposit(id); },
+
+      /* سابقه از سرور با خود ردیف‌ها می‌آید؛ این فقط برای وقتی است
+         که کسی مستقیم صدایش بزند. */
+      userHistory: function () {
+        return { done: 0, noShow: 0, cancelled: 0, isNew: false, suggestDeposit: false };
+      },
       users: function (params) { return ZZ.api.admin.users(params); },
       birthdays: function () { return ZZ.api.admin.birthdays(); },
       services: function () { return ZZ.api.admin.services(); },

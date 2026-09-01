@@ -35,6 +35,16 @@ node "$ROOT/tools/check-booking-flow.js" | tail -2
 echo "==> بررسی نحو و امنیت فایل‌های PHP"
 node "$ROOT/tools/check-php.js" | tail -2
 
+echo "==> ساخت و بررسی ساختار پایگاه داده"
+node "$ROOT/tools/make-schema.js" | tail -2
+node "$ROOT/tools/check-sql.js" | tail -2
+
+echo "==> تطبیق قرارداد فرانت و بک‌اند"
+node "$ROOT/tools/check-api-contract.js" | tail -2
+
+echo "==> بررسی تقویم شمسی سرور"
+node "$ROOT/tools/check-jalali.js" | tail -2
+
 echo "==> پاک‌سازی خروجی قبلی"
 rm -rf "$DIST" "$ZIP"
 mkdir -p "$DIST"
@@ -48,11 +58,21 @@ tar -cf - \
   --exclude='./docs' \
   --exclude='./tools' \
   --exclude='./node_modules' \
+  --exclude='./api/config.php' \
   --exclude='./server.py' \
   --exclude='./.gitignore' \
   --exclude='*.zip' \
   --exclude='.DS_Store' \
   . | (cd "$DIST" && tar -xf -)
+
+echo "==> اطمینان از اینکه فایل رمزها داخل بسته نیست"
+# دوباره‌کاریِ عمدی: بالا هم exclude شده. اگر روزی آن خط پاک شود،
+# این‌جا جلوی انتشار رمز دیتابیس و پنل پیامک را می‌گیرد.
+rm -f "$DIST/api/config.php"
+if [ -f "$DIST/api/config.php" ]; then
+  echo "خطا: api/config.php داخل بسته مانده — ساخت متوقف شد." >&2
+  exit 1
+fi
 
 echo "==> حذف اسکریپت توسعه‌ای PWA cache reset از صفحات HTML"
 python3 - "$DIST" <<'PY'
