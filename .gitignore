@@ -14,3 +14,6 @@ Thumbs.db
 
 # تنظیمات سرور — شامل رمز دیتابیس و کلید پیامک است
 api/config.php
+
+# وابستگی‌های ابزارها — با npm install --prefix tools بازسازی می‌شوند
+tools/node_modules/
