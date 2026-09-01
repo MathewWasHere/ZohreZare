@@ -11,3 +11,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# تنظیمات سرور — شامل رمز دیتابیس و کلید پیامک است
+api/config.php

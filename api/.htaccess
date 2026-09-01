@@ -1,0 +1,16 @@
+# تنظیمات و کتابخانه‌ها هیچ‌وقت نباید مستقیم از وب خوانده شوند
+<FilesMatch "^(config|config\.sample)\.php$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # پوشه‌ی lib فقط از داخل PHP قابل استفاده است
+  RewriteRule ^lib/ - [F,L]
+</IfModule>
+
+# نمایش خطاهای PHP روی سایت واقعی خاموش باشد
+# نمایش خطاهای PHP روی سایت واقعی خاموش باشد (بعضی هاست‌ها این را نمی‌پذیرند)
+<IfModule mod_php.c>
+  php_flag display_errors off
+</IfModule>

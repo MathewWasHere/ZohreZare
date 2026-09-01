@@ -32,6 +32,9 @@ python3 "$ROOT/tools/header-fit.py" | tail -2
 echo "==> بررسی جریان تأیید رزرو"
 node "$ROOT/tools/check-booking-flow.js" | tail -2
 
+echo "==> بررسی نحو و امنیت فایل‌های PHP"
+node "$ROOT/tools/check-php.js" | tail -2
+
 echo "==> پاک‌سازی خروجی قبلی"
 rm -rf "$DIST" "$ZIP"
 mkdir -p "$DIST"

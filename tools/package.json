@@ -1,0 +1,8 @@
+{
+  "name": "zohrezare-tools",
+  "private": true,
+  "description": "ابزارهای بررسی کیفیت — جزو سایت نیستند و در بسته‌ی استقرار نمی‌آیند",
+  "dependencies": {
+    "php-parser": "^3.7.0"
+  }
+}
