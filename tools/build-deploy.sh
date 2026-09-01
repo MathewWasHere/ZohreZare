@@ -36,6 +36,7 @@ tar -cf - \
   --exclude='./.github' \
   --exclude='./dist' \
   --exclude='./deploy' \
+  --exclude='./docs' \
   --exclude='./tools' \
   --exclude='./node_modules' \
   --exclude='./server.py' \

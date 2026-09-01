@@ -1,0 +1,485 @@
+{
+  "groups": [
+    {
+      "title": "رزگلد — رنگ اصلی برند",
+      "desc": "قلب هویت بصری. دکمه‌های اصلی، لینک‌ها، تیترهای تاکیدی و آیکون‌ها.",
+      "colors": [
+        {
+          "token": "--rose-400",
+          "value": "#C4826D",
+          "hex": "#C4826D",
+          "rgb": "rgb(196, 130, 109)",
+          "hsl": "hsl(14, 42%, 60%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--rose-500",
+          "value": "#A55C44",
+          "hex": "#A55C44",
+          "rgb": "rgb(165, 92, 68)",
+          "hsl": "hsl(15, 42%, 46%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--rose-600",
+          "value": "#85462F",
+          "hex": "#85462F",
+          "rgb": "rgb(133, 70, 47)",
+          "hsl": "hsl(16, 48%, 35%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--rose-700",
+          "value": "#6B3623",
+          "hex": "#6B3623",
+          "rgb": "rgb(107, 54, 35)",
+          "hsl": "hsl(16, 51%, 28%)",
+          "alpha": 1.0
+        }
+      ]
+    },
+    {
+      "title": "طلایی — رنگ مکمل",
+      "desc": "لهجه‌ی لوکس؛ جزئیات ظریف مثل خطوط تزیینی و متن روی زمینه‌ی تیره.",
+      "colors": [
+        {
+          "token": "--gold-300",
+          "value": "#D4B183",
+          "hex": "#D4B183",
+          "rgb": "rgb(212, 177, 131)",
+          "hsl": "hsl(34, 49%, 67%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--gold-500",
+          "value": "#A9803F",
+          "hex": "#A9803F",
+          "rgb": "rgb(169, 128, 63)",
+          "hsl": "hsl(37, 46%, 45%)",
+          "alpha": 1.0
+        }
+      ]
+    },
+    {
+      "title": "صورتی ملایم — پس‌زمینه‌های تاکیدی",
+      "desc": "زمینه‌ی بخش‌های برجسته، برچسب‌ها و حالت hover.",
+      "colors": [
+        {
+          "token": "--blush-100",
+          "value": "#FBE6DF",
+          "hex": "#FBE6DF",
+          "rgb": "rgb(251, 230, 223)",
+          "hsl": "hsl(15, 78%, 93%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--blush-200",
+          "value": "#F3CFC3",
+          "hex": "#F3CFC3",
+          "rgb": "rgb(243, 207, 195)",
+          "hsl": "hsl(15, 67%, 86%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--blush-300",
+          "value": "#DFAB99",
+          "hex": "#DFAB99",
+          "rgb": "rgb(223, 171, 153)",
+          "hsl": "hsl(15, 52%, 74%)",
+          "alpha": 1.0
+        }
+      ]
+    },
+    {
+      "title": "کرم — سطوح و پس‌زمینه",
+      "desc": "بوم اصلی سایت. تقریباً خنثی تا رزگلد روی آن بدرخشد.",
+      "colors": [
+        {
+          "token": "--bg-elevated",
+          "value": "#FFFFFF",
+          "hex": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "hsl": "hsl(0, 0%, 100%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--cream-50",
+          "value": "#FFFCFA",
+          "hex": "#FFFCFA",
+          "rgb": "rgb(255, 252, 250)",
+          "hsl": "hsl(24, 100%, 99%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--cream-100",
+          "value": "#FAF4EF",
+          "hex": "#FAF4EF",
+          "rgb": "rgb(250, 244, 239)",
+          "hsl": "hsl(27, 52%, 96%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--cream-200",
+          "value": "#F0E4D9",
+          "hex": "#F0E4D9",
+          "rgb": "rgb(240, 228, 217)",
+          "hsl": "hsl(29, 43%, 90%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--cream-300",
+          "value": "#E2D0C1",
+          "hex": "#E2D0C1",
+          "rgb": "rgb(226, 208, 193)",
+          "hsl": "hsl(27, 36%, 82%)",
+          "alpha": 1.0
+        }
+      ]
+    },
+    {
+      "title": "قهوه‌ای تیره — متن و کنتراست",
+      "desc": "به‌جای مشکی خالص؛ گرم‌تر و هماهنگ با رزگلد.",
+      "colors": [
+        {
+          "token": "--ink-900",
+          "value": "#15100E",
+          "hex": "#15100E",
+          "rgb": "rgb(21, 16, 14)",
+          "hsl": "hsl(17, 20%, 7%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-800",
+          "value": "#2A1F1A",
+          "hex": "#2A1F1A",
+          "rgb": "rgb(42, 31, 26)",
+          "hsl": "hsl(19, 24%, 13%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-700",
+          "value": "#45332B",
+          "hex": "#45332B",
+          "rgb": "rgb(69, 51, 43)",
+          "hsl": "hsl(18, 23%, 22%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-500",
+          "value": "#6B564C",
+          "hex": "#6B564C",
+          "rgb": "rgb(107, 86, 76)",
+          "hsl": "hsl(19, 17%, 36%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-400",
+          "value": "#8C7669",
+          "hex": "#8C7669",
+          "rgb": "rgb(140, 118, 105)",
+          "hsl": "hsl(22, 14%, 48%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-300",
+          "value": "#B3A093",
+          "hex": "#B3A093",
+          "rgb": "rgb(179, 160, 147)",
+          "hsl": "hsl(24, 17%, 64%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--ink-200",
+          "value": "#D6C8BC",
+          "hex": "#D6C8BC",
+          "rgb": "rgb(214, 200, 188)",
+          "hsl": "hsl(28, 24%, 79%)",
+          "alpha": 1.0
+        }
+      ]
+    },
+    {
+      "title": "رنگ‌های وضعیت",
+      "desc": "فقط برای پیام‌های سیستمی — موفقیت، خطا و هشدار.",
+      "colors": [
+        {
+          "token": "--success-500",
+          "value": "#4C7A53",
+          "hex": "#4C7A53",
+          "rgb": "rgb(76, 122, 83)",
+          "hsl": "hsl(129, 23%, 39%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--success-50",
+          "value": "#E9F2EA",
+          "hex": "#E9F2EA",
+          "rgb": "rgb(233, 242, 234)",
+          "hsl": "hsl(127, 26%, 93%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--danger-500",
+          "value": "#A8443A",
+          "hex": "#A8443A",
+          "rgb": "rgb(168, 68, 58)",
+          "hsl": "hsl(5, 49%, 44%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--danger-50",
+          "value": "#FBE9E6",
+          "hex": "#FBE9E6",
+          "rgb": "rgb(251, 233, 230)",
+          "hsl": "hsl(9, 72%, 94%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--warn-600",
+          "value": "#8A6318",
+          "hex": "#8A6318",
+          "rgb": "rgb(138, 99, 24)",
+          "hsl": "hsl(39, 70%, 32%)",
+          "alpha": 1.0
+        },
+        {
+          "token": "--warn-50",
+          "value": "#FDF1DC",
+          "hex": "#FDF1DC",
+          "rgb": "rgb(253, 241, 220)",
+          "hsl": "hsl(38, 89%, 93%)",
+          "alpha": 1.0
+        }
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "token": "--bg",
+      "value": "#FFFCFA",
+      "hex": "#FFFCFA",
+      "rgb": "rgb(255, 252, 250)",
+      "hsl": "hsl(24, 100%, 99%)",
+      "alpha": 1.0,
+      "role": "پس‌زمینه‌ی اصلی صفحه",
+      "maps_to": "var(--cream-50)"
+    },
+    {
+      "token": "--bg-soft",
+      "value": "#FAF4EF",
+      "hex": "#FAF4EF",
+      "rgb": "rgb(250, 244, 239)",
+      "hsl": "hsl(27, 52%, 96%)",
+      "alpha": 1.0,
+      "role": "پس‌زمینه‌ی بخش‌های یک‌درمیان",
+      "maps_to": "var(--cream-100)"
+    },
+    {
+      "token": "--bg-elevated",
+      "value": "#FFFFFF",
+      "hex": "#FFFFFF",
+      "rgb": "rgb(255, 255, 255)",
+      "hsl": "hsl(0, 0%, 100%)",
+      "alpha": 1.0,
+      "role": "کارت‌ها و سطوح بالاتر",
+      "maps_to": "#FFFFFF"
+    },
+    {
+      "token": "--text",
+      "value": "#15100E",
+      "hex": "#15100E",
+      "rgb": "rgb(21, 16, 14)",
+      "hsl": "hsl(17, 20%, 7%)",
+      "alpha": 1.0,
+      "role": "متن اصلی",
+      "maps_to": "var(--ink-900)"
+    },
+    {
+      "token": "--text-soft",
+      "value": "#45332B",
+      "hex": "#45332B",
+      "rgb": "rgb(69, 51, 43)",
+      "hsl": "hsl(18, 23%, 22%)",
+      "alpha": 1.0,
+      "role": "متن ملایم",
+      "maps_to": "var(--ink-700)"
+    },
+    {
+      "token": "--text-muted",
+      "value": "#6B564C",
+      "hex": "#6B564C",
+      "rgb": "rgb(107, 86, 76)",
+      "hsl": "hsl(19, 17%, 36%)",
+      "alpha": 1.0,
+      "role": "متن کم‌اهمیت و توضیحات",
+      "maps_to": "var(--ink-500)"
+    },
+    {
+      "token": "--line",
+      "value": "rgba(21, 16, 14, 0.14)",
+      "hex": "#15100E",
+      "rgb": "rgb(21, 16, 14)",
+      "hsl": "hsl(17, 20%, 7%)",
+      "alpha": 0.14,
+      "role": "خطوط و حاشیه‌ها",
+      "maps_to": "rgba(21, 16, 14, 0.14)"
+    },
+    {
+      "token": "--line-strong",
+      "value": "rgba(21, 16, 14, 0.26)",
+      "hex": "#15100E",
+      "rgb": "rgb(21, 16, 14)",
+      "hsl": "hsl(17, 20%, 7%)",
+      "alpha": 0.26,
+      "role": "حاشیه‌های پررنگ‌تر",
+      "maps_to": "rgba(21, 16, 14, 0.26)"
+    },
+    {
+      "token": "--accent",
+      "value": "#A55C44",
+      "hex": "#A55C44",
+      "rgb": "rgb(165, 92, 68)",
+      "hsl": "hsl(15, 42%, 46%)",
+      "alpha": 1.0,
+      "role": "رنگ تاکید (دکمه‌ها و لینک‌ها)",
+      "maps_to": "var(--rose-500)"
+    },
+    {
+      "token": "--accent-soft",
+      "value": "#FBE6DF",
+      "hex": "#FBE6DF",
+      "rgb": "rgb(251, 230, 223)",
+      "hsl": "hsl(15, 78%, 93%)",
+      "alpha": 1.0,
+      "role": "زمینه‌ی ملایم تاکید",
+      "maps_to": "var(--blush-100)"
+    }
+  ],
+  "contrast": [
+    {
+      "label": "متن اصلی روی پس‌زمینه",
+      "fg": "#15100E",
+      "bg": "#FFFCFA",
+      "fg_token": "--text",
+      "bg_token": "--bg",
+      "ratio": 18.48,
+      "grade": "AAA"
+    },
+    {
+      "label": "متن ملایم روی پس‌زمینه",
+      "fg": "#45332B",
+      "bg": "#FFFCFA",
+      "fg_token": "--text-soft",
+      "bg_token": "--bg",
+      "ratio": 11.67,
+      "grade": "AAA"
+    },
+    {
+      "label": "متن کم‌اهمیت روی پس‌زمینه",
+      "fg": "#6B564C",
+      "bg": "#FFFCFA",
+      "fg_token": "--text-muted",
+      "bg_token": "--bg",
+      "ratio": 6.72,
+      "grade": "AA"
+    },
+    {
+      "label": "لینک/تاکید روی سفید",
+      "fg": "#A55C44",
+      "bg": "#FFFFFF",
+      "fg_token": "--rose-500",
+      "bg_token": "--bg-elevated",
+      "ratio": 4.98,
+      "grade": "AA"
+    },
+    {
+      "label": "رزگلد تیره روی سفید",
+      "fg": "#85462F",
+      "bg": "#FFFFFF",
+      "fg_token": "--rose-600",
+      "bg_token": "--bg-elevated",
+      "ratio": 7.21,
+      "grade": "AAA"
+    },
+    {
+      "label": "متن سفید روی دکمه‌ی اصلی",
+      "fg": "#FFFFFF",
+      "bg": "#A55C44",
+      "fg_token": "--bg-elevated",
+      "bg_token": "--rose-500",
+      "ratio": 4.98,
+      "grade": "AA"
+    },
+    {
+      "label": "متن سفید روی رزگلد روشن",
+      "fg": "#FFFFFF",
+      "bg": "#C4826D",
+      "fg_token": "--bg-elevated",
+      "bg_token": "--rose-400",
+      "ratio": 3.11,
+      "grade": "AA بزرگ"
+    },
+    {
+      "label": "متن روشن روی زمینه‌ی تیره (فوتر)",
+      "fg": "#FFFCFA",
+      "bg": "#15100E",
+      "fg_token": "--cream-50",
+      "bg_token": "--ink-900",
+      "ratio": 18.48,
+      "grade": "AAA"
+    },
+    {
+      "label": "طلایی روی زمینه‌ی تیره",
+      "fg": "#D4B183",
+      "bg": "#15100E",
+      "fg_token": "--gold-300",
+      "bg_token": "--ink-900",
+      "ratio": 9.36,
+      "grade": "AAA"
+    },
+    {
+      "label": "طلایی تیره روی سفید",
+      "fg": "#A9803F",
+      "bg": "#FFFFFF",
+      "fg_token": "--gold-500",
+      "bg_token": "--bg-elevated",
+      "ratio": 3.59,
+      "grade": "AA بزرگ"
+    },
+    {
+      "label": "پیام موفقیت",
+      "fg": "#4C7A53",
+      "bg": "#E9F2EA",
+      "fg_token": "--success-500",
+      "bg_token": "--success-50",
+      "ratio": 4.35,
+      "grade": "AA بزرگ"
+    },
+    {
+      "label": "پیام خطا",
+      "fg": "#A8443A",
+      "bg": "#FBE9E6",
+      "fg_token": "--danger-500",
+      "bg_token": "--danger-50",
+      "ratio": 5.04,
+      "grade": "AA"
+    },
+    {
+      "label": "پیام هشدار",
+      "fg": "#8A6318",
+      "bg": "#FDF1DC",
+      "fg_token": "--warn-600",
+      "bg_token": "--warn-50",
+      "ratio": 4.85,
+      "grade": "AA"
+    }
+  ],
+  "photo_tones": [
+    "#463D34",
+    "#9F6758",
+    "#A58A70",
+    "#A27E83",
+    "#A4A0A2",
+    "#E0A5A5"
+  ]
+}
