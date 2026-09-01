@@ -2,6 +2,9 @@
 dist/
 *.zip
 
+# استثنا: نسخه‌ی نهایی بسته که برای دانلود روی گیت‌هاب نگه داشته می‌شود
+!deploy/zohrezare-cpanel.zip
+
 # سیستم‌عامل / ویرایشگر
 .DS_Store
 Thumbs.db
