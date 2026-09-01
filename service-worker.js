@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zohrezare-v3';
+const CACHE_NAME = 'zohrezare-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ const STATIC_ASSETS = [
   './assets/img/favicon.svg',
   './assets/img/brand/logo.png',
   './assets/img/portrait-cutout.png',
-  './assets/img/salon-interior.jpg',
+  './assets/img/edited_v2.png',
   './assets/img/banner-cta.jpg',
   './assets/img/banner-cta-mobile.jpg',
   './assets/img/banner-footer.jpg'

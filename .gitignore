@@ -1,0 +1,10 @@
+# خروجی ساخت بسته‌ی استقرار (با tools/build-deploy.sh ساخته می‌شود)
+dist/
+*.zip
+
+# سیستم‌عامل / ویرایشگر
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
