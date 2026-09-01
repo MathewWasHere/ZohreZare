@@ -330,12 +330,59 @@ function build() {
   p('--     ADD UNIQUE KEY uk_appt_slot (slot_lock);');
   p('-- ==========================================================================');
 
-  fs.writeFileSync(OUT, L.join('\n'), 'utf8');
+  fs.writeFileSync(OUT, blockComments(L).join('\n'), 'utf8');
 
   const variants = services.reduce((n, s) => n + (s.variants || []).length, 0);
   console.log('api/schema.sql ساخته شد ✓');
   console.log('  خدمات: ' + services.length + '   گزینه‌ها: ' + variants);
   console.log('  حجم: ' + Math.round(fs.statSync(OUT).size / 1024) + 'KB');
+}
+
+
+/* ---------------- کامنت‌های مقاوم ---------------- */
+
+/**
+ * دسته‌های پشت‌سر‌همِ خطوط «--» را به یک کامنت بلوکی تبدیل می‌کند.
+ *
+ * چرا؟ چون «--» در MySQL فقط تا آخرِ همان خط کامنت است. اگر فایل
+ * جایی در مسیر (کپی‌پیست، ویرایشگر، آپلود) خطوط جدیدش را از دست
+ * بدهد، هر دستور SQL می‌چسبد به کامنتِ بالای خودش و کاملاً بلعیده
+ * می‌شود — بدون هیچ خطای واضحی. دقیقاً همین اتفاق یک بار افتاد و
+ * نتیجه‌اش «۳۴ کوئری اجرا شد» ولی صفر جدول بود.
+ *
+ * کامنت بلوکی /* ... *\/ چنین ضعفی ندارد: هر جا بسته شود تمام
+ * می‌شود، حتی اگر همه چیز روی یک خط باشد.
+ */
+function blockComments(lines) {
+  const out = [];
+  let buf = [];
+
+  const flush = () => {
+    if (!buf.length) return;
+    /* متن کامنت نباید دنباله‌ی پایان‌دهنده داشته باشد وگرنه کامنت
+       زودتر بسته می‌شود */
+    const body = buf.map((l) => l.replace(/^--\s?/, '').replace(/\*\//g, '* /'));
+    if (body.length === 1) {
+      out.push('/* ' + body[0].trim() + ' */');
+    } else {
+      out.push('/*');
+      body.forEach((b) => out.push('   ' + b));
+      out.push('*/');
+    }
+    buf = [];
+  };
+
+  lines.forEach((line) => {
+    if (/^\s*--/.test(line)) {
+      buf.push(line.trim());
+    } else {
+      flush();
+      out.push(line);
+    }
+  });
+  flush();
+
+  return out;
 }
 
 build();

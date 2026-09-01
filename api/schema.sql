@@ -1,21 +1,25 @@
--- ==========================================================================
--- schema.sql — ساختار پایگاه داده‌ی سایت زهره زارع
---
--- روش اجرا:
---   cPanel → phpMyAdmin → دیتابیس را انتخاب کنید → زبانه‌ی Import
---   → همین فایل را انتخاب کنید → Go
---
--- این فایل را می‌شود چند بار اجرا کرد؛ جدول‌های موجود دست‌نخورده
--- می‌مانند و خدمات دوباره‌نویسی می‌شوند.
---
--- تولید خودکار با tools/make-schema.js — دستی ویرایشش نکنید.
--- ==========================================================================
+/*
+   ==========================================================================
+   schema.sql — ساختار پایگاه داده‌ی سایت زهره زارع
+   
+   روش اجرا:
+     cPanel → phpMyAdmin → دیتابیس را انتخاب کنید → زبانه‌ی Import
+     → همین فایل را انتخاب کنید → Go
+   
+   این فایل را می‌شود چند بار اجرا کرد؛ جدول‌های موجود دست‌نخورده
+   می‌مانند و خدمات دوباره‌نویسی می‌شوند.
+   
+   تولید خودکار با tools/make-schema.js — دستی ویرایشش نکنید.
+   ==========================================================================
+*/
 
 SET NAMES utf8mb4;
 
--- ---------------- کاربران ----------------
--- تاریخ تولد شمسی ذخیره می‌شود (نه میلادی) چون کاربر همان را
--- وارد می‌کند و تبدیل رفت‌وبرگشتی فقط جای خطا می‌سازد.
+/*
+   ---------------- کاربران ----------------
+   تاریخ تولد شمسی ذخیره می‌شود (نه میلادی) چون کاربر همان را
+   وارد می‌کند و تبدیل رفت‌وبرگشتی فقط جای خطا می‌سازد.
+*/
 CREATE TABLE IF NOT EXISTS users (
   id            VARCHAR(32)  NOT NULL,
   phone         CHAR(11)     NOT NULL,
@@ -31,9 +35,11 @@ CREATE TABLE IF NOT EXISTS users (
   KEY idx_users_birthday (birth_m, birth_d)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- نشست‌های ورود ----------------
--- توکن خام هرگز ذخیره نمی‌شود؛ فقط هش SHA-256 آن. اگر کسی به
--- دیتابیس دسترسی پیدا کند نمی‌تواند با آن وارد حساب کسی شود.
+/*
+   ---------------- نشست‌های ورود ----------------
+   توکن خام هرگز ذخیره نمی‌شود؛ فقط هش SHA-256 آن. اگر کسی به
+   دیتابیس دسترسی پیدا کند نمی‌تواند با آن وارد حساب کسی شود.
+*/
 CREATE TABLE IF NOT EXISTS sessions (
   token      CHAR(64)     NOT NULL,
   user_id    VARCHAR(32)  NOT NULL,
@@ -47,8 +53,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   KEY idx_sessions_exp (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- کدهای یک‌بارمصرف ----------------
--- code_hash هش کد است، نه خود کد.
+/*
+   ---------------- کدهای یک‌بارمصرف ----------------
+   code_hash هش کد است، نه خود کد.
+*/
 CREATE TABLE IF NOT EXISTS otp_codes (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   phone      CHAR(11)     NOT NULL,
@@ -63,10 +71,12 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   KEY idx_otp_ip (ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- خدمات ----------------
--- ستون‌های JSON فهرست‌های متنی صفحه‌ی خدمت‌اند (پاراگراف‌ها،
--- مراقبت‌ها، پرسش‌ها). چون هیچ‌وقت جداگانه جست‌وجو نمی‌شوند،
--- جدول جدا برایشان فقط پیچیدگی اضافه می‌کرد.
+/*
+   ---------------- خدمات ----------------
+   ستون‌های JSON فهرست‌های متنی صفحه‌ی خدمت‌اند (پاراگراف‌ها،
+   مراقبت‌ها، پرسش‌ها). چون هیچ‌وقت جداگانه جست‌وجو نمی‌شوند،
+   جدول جدا برایشان فقط پیچیدگی اضافه می‌کرد.
+*/
 CREATE TABLE IF NOT EXISTS services (
   id            VARCHAR(40)  NOT NULL,
   slug          VARCHAR(60)  NOT NULL,
@@ -101,20 +111,22 @@ CREATE TABLE IF NOT EXISTS service_variants (
   UNIQUE KEY uk_variant (service_id, variant_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- نوبت‌ها ----------------
--- چرخه‌ی وضعیت (بدون درگاه پرداخت):
---
---   مشتری ساعت را می‌گیرد
---          ↓
---   pending ──(مدیر تماس می‌گیرد و تأیید می‌کند)──→ confirmed ──→ done
---      │                                               │
---      │                                               └──→ no_show
---      ├──(مدیر رد می‌کند)──→ rejected
---      └──(مشتری منصرف می‌شود)──→ cancelled
---
--- بیعانه یک رکورد ساده روی همین ردیف است، نه تراکنش بانکی. مدیر
--- حین تماس مبلغ را می‌گیرد و ثبتش می‌کند. هر وقت درگاه پرداخت
--- اضافه شد، فقط یک مقدار جدید به deposit_method اضافه می‌شود.
+/*
+   ---------------- نوبت‌ها ----------------
+   چرخه‌ی وضعیت (بدون درگاه پرداخت):
+   
+     مشتری ساعت را می‌گیرد
+            ↓
+     pending ──(مدیر تماس می‌گیرد و تأیید می‌کند)──→ confirmed ──→ done
+        │                                               │
+        │                                               └──→ no_show
+        ├──(مدیر رد می‌کند)──→ rejected
+        └──(مشتری منصرف می‌شود)──→ cancelled
+   
+   بیعانه یک رکورد ساده روی همین ردیف است، نه تراکنش بانکی. مدیر
+   حین تماس مبلغ را می‌گیرد و ثبتش می‌کند. هر وقت درگاه پرداخت
+   اضافه شد، فقط یک مقدار جدید به deposit_method اضافه می‌شود.
+*/
 CREATE TABLE IF NOT EXISTS appointments (
   id              VARCHAR(32)  NOT NULL,
   user_id         VARCHAR(32)  NOT NULL,
@@ -145,7 +157,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   KEY idx_appt_status (status, `date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- بستن روز و ساعت توسط مدیر ----------------
+/* ---------------- بستن روز و ساعت توسط مدیر ---------------- */
 CREATE TABLE IF NOT EXISTS closed_days (
   `date`     DATE         NOT NULL,
   reason     VARCHAR(120) NOT NULL DEFAULT '',
@@ -161,8 +173,10 @@ CREATE TABLE IF NOT EXISTS blocked_slots (
   PRIMARY KEY (`date`, `time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------- گزارش پیامک ----------------
--- متن کد تأیید عمداً ذخیره نمی‌شود.
+/*
+   ---------------- گزارش پیامک ----------------
+   متن کد تأیید عمداً ذخیره نمی‌شود.
+*/
 CREATE TABLE IF NOT EXISTS sms_log (
   id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   phone       CHAR(11)     NOT NULL,
@@ -176,13 +190,15 @@ CREATE TABLE IF NOT EXISTS sms_log (
   KEY idx_sms_phone (phone, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ==========================================================================
--- کاتالوگ خدمات
--- برگرفته از assets/js/data/services.js تا نسخه‌ی سرور و نسخه‌ی
--- استاتیک سایت هرگز از هم جدا نیفتند.
--- ==========================================================================
+/*
+   ==========================================================================
+   کاتالوگ خدمات
+   برگرفته از assets/js/data/services.js تا نسخه‌ی سرور و نسخه‌ی
+   استاتیک سایت هرگز از هم جدا نیفتند.
+   ==========================================================================
+*/
 
--- بن‌مژه (اکستنشن مژه)
+/* بن‌مژه (اکستنشن مژه) */
 INSERT INTO services
   (id, slug, title, short_text, image, icon, ig_link, duration_min,
    price_from, description, includes_json, aftercare, good_for, faq,
@@ -235,7 +251,7 @@ ON DUPLICATE KEY UPDATE
   duration_min = VALUES(duration_min), price = VALUES(price),
   sort_order = VALUES(sort_order);
 
--- خط چشم دائم و میکروبلیدینگ
+/* خط چشم دائم و میکروبلیدینگ */
 INSERT INTO services
   (id, slug, title, short_text, image, icon, ig_link, duration_min,
    price_from, description, includes_json, aftercare, good_for, faq,
@@ -288,7 +304,7 @@ ON DUPLICATE KEY UPDATE
   duration_min = VALUES(duration_min), price = VALUES(price),
   sort_order = VALUES(sort_order);
 
--- تینت لب و شیدینگ لب
+/* تینت لب و شیدینگ لب */
 INSERT INTO services
   (id, slug, title, short_text, image, icon, ig_link, duration_min,
    price_from, description, includes_json, aftercare, good_for, faq,
@@ -348,7 +364,7 @@ ON DUPLICATE KEY UPDATE
   duration_min = VALUES(duration_min), price = VALUES(price),
   sort_order = VALUES(sort_order);
 
--- لیفت و لمینت مژه و ابرو
+/* لیفت و لمینت مژه و ابرو */
 INSERT INTO services
   (id, slug, title, short_text, image, icon, ig_link, duration_min,
    price_from, description, includes_json, aftercare, good_for, faq,
@@ -401,24 +417,26 @@ ON DUPLICATE KEY UPDATE
   duration_min = VALUES(duration_min), price = VALUES(price),
   sort_order = VALUES(sort_order);
 
--- ==========================================================================
--- اختیاری — قفل ضدِ رزرو هم‌زمان
---
--- کد PHP قبل از ثبت بررسی می‌کند که ساعت آزاد باشد، ولی اگر دو
--- نفر در همان کسری از ثانیه ثبت کنند، هر دو بررسی موفق می‌شود و
--- یک ساعت دو بار رزرو می‌شود. ستون زیر همان ساعت را برای
--- نوبت‌های فعال یکتا می‌کند، پس دیتابیس دومی را رد می‌کند و PHP
--- پیام «این ساعت همین الان گرفته شد» نشان می‌دهد.
---
--- به MySQL 5.7+ یا MariaDB 10.2+ نیاز دارد. اگر خطا داد، سایت
--- بدون این هم کار می‌کند — فقط این محافظت آخر را ندارد.
--- دستور زیر را جداگانه در phpMyAdmin اجرا کنید:
---
---   ALTER TABLE appointments
---     ADD COLUMN slot_lock VARCHAR(20)
---       GENERATED ALWAYS AS (
---         CASE WHEN status IN ('pending','confirmed')
---              THEN CONCAT(`date`, ' ', `time`) ELSE NULL END
---       ) STORED,
---     ADD UNIQUE KEY uk_appt_slot (slot_lock);
--- ==========================================================================
+/*
+   ==========================================================================
+   اختیاری — قفل ضدِ رزرو هم‌زمان
+   
+   کد PHP قبل از ثبت بررسی می‌کند که ساعت آزاد باشد، ولی اگر دو
+   نفر در همان کسری از ثانیه ثبت کنند، هر دو بررسی موفق می‌شود و
+   یک ساعت دو بار رزرو می‌شود. ستون زیر همان ساعت را برای
+   نوبت‌های فعال یکتا می‌کند، پس دیتابیس دومی را رد می‌کند و PHP
+   پیام «این ساعت همین الان گرفته شد» نشان می‌دهد.
+   
+   به MySQL 5.7+ یا MariaDB 10.2+ نیاز دارد. اگر خطا داد، سایت
+   بدون این هم کار می‌کند — فقط این محافظت آخر را ندارد.
+   دستور زیر را جداگانه در phpMyAdmin اجرا کنید:
+   
+     ALTER TABLE appointments
+       ADD COLUMN slot_lock VARCHAR(20)
+         GENERATED ALWAYS AS (
+           CASE WHEN status IN ('pending','confirmed')
+                THEN CONCAT(`date`, ' ', `time`) ELSE NULL END
+         ) STORED,
+       ADD UNIQUE KEY uk_appt_slot (slot_lock);
+   ==========================================================================
+*/

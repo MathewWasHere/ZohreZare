@@ -33,14 +33,28 @@ function split(sql) {
   let cur = '';
   let inStr = false;
   let inLineComment = false;
+  let inBlockComment = false;
 
   for (let i = 0; i < sql.length; i++) {
     const c = sql[i];
     const next = sql[i + 1];
 
+    if (inBlockComment) {
+      if (c === '*' && next === '/') { inBlockComment = false; cur += '*/'; i++; continue; }
+      cur += c;
+      continue;
+    }
+
     if (inLineComment) {
       if (c === '\n') inLineComment = false;
       cur += c;
+      continue;
+    }
+
+    if (!inStr && c === '/' && next === '*') {
+      inBlockComment = true;
+      cur += '/*';
+      i++;
       continue;
     }
 
@@ -69,7 +83,11 @@ function split(sql) {
 }
 
 function stripComments(s) {
-  return s.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  return s
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('--'))
+    .join('\n');
 }
 
 /* ---------------- بررسی‌ها ---------------- */
@@ -177,6 +195,35 @@ function main() {
     } catch (e) {
       problems.push('JSON خراب در schema: ' + raw.slice(0, 60) + '… (' + e.message + ')');
     }
+  }
+
+  /* ۴) مقاومت در برابر از بین رفتن خط جدید
+     ----------------------------------------------------------------
+     یک بار کل ایمپورت بی‌صدا شکست خورد چون خطوط جدید فایل جایی در
+     مسیر از بین رفته بودند. با کامنت «--» هر دستور به کامنت بالای
+     خودش می‌چسبید و کامل بلعیده می‌شد؛ phpMyAdmin می‌گفت «۳۴ کوئری
+     اجرا شد» ولی صفر جدول ساخته می‌شد.
+
+     تست: فایل را روی یک خط له می‌کنیم و می‌بینیم آیا هنوز همان
+     دستورها را می‌دهد یا نه. */
+  const flattened = sql.replace(/\r?\n/g, ' ');
+  const flatStatements = split(flattened);
+  const flatCreates = flatStatements.filter(
+    (st) => /^CREATE TABLE/i.test(stripComments(st).trim())
+  ).length;
+  const realCreates = statements.filter(
+    (st) => /^CREATE TABLE/i.test(stripComments(st).trim())
+  ).length;
+
+  if (flatCreates !== realCreates) {
+    problems.push(
+      'اگر خط\u200cهای جدید فایل از بین بروند، فقط ' + flatCreates + ' از ' +
+      realCreates + ' دستور CREATE TABLE باقی می\u200cماند — ' +
+      'یعنی کامنت\u200cها دستورها را می\u200cبلعند. از /* */ استفاده کنید نه --'
+    );
+  } else {
+    console.log('  • مقاوم در برابر از بین رفتن خط جدید (' +
+                realCreates + ' جدول در هر دو حالت)');
   }
 
   /* ---------------- گزارش ---------------- */
