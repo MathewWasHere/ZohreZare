@@ -484,28 +484,12 @@ select.input {
               background-color var(--dur) var(--ease),
               box-shadow var(--dur) var(--ease);
 }
-/* موبایل: فقط آیکون */
-@media (max-width: 859px) {
-  .call-btn {
-    padding: 0.42rem;
-  }
-  .call-btn__text {
-    display: none;
-  }
-  .header__cta {
-    padding: 0.4rem 0.6rem;
-    font-size: var(--fs-xs);
-  }
-  .profile-box,
-  .header__actions .btn--sm {
-    padding: 0.35rem 0.6rem;
-    font-size: var(--fs-xs);
-  }
-  .burger {
-    width: 36px;
-    height: 36px;
-  }
-}
+/* توجه: قوانین موبایلِ هدر در انتهای همین فایل آمده‌اند.
+   قبلاً اینجا بودند ولی چون قانون‌های پایه‌ی .call-btn__text و
+   .profile-box بعد از این نقطه تعریف شده‌اند، آن‌ها را بازنویسی
+   می‌کردند (مدیا‌کوئری به specificity اضافه نمی‌کند) و در عمل
+   بی‌اثر بودند. */
+
 .call-btn:hover {
   border-color: var(--rose-400);
   background: var(--blush-100);
@@ -648,14 +632,22 @@ select.input {
 .footer__socials a:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--gold-300); }
 .footer__socials svg { width: 18px; height: 18px; }
 
-/* ==================== پاپ‌آپ نصب PWA - Delava Style ==================== */
+/* ==================== پاپ‌آپ نصب PWA ==================== */
 .install-prompt {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: 80px;
+  /* روی آیفون‌های بدون دکمه، نوار خانه فضای پایین را می‌گیرد */
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   max-width: 100%;
+  /* کل پاپ‌آپ یک کارت واحد است؛ قبلاً دکمه‌ی نصب بیرون از کارت
+     تیره شناور می‌ماند و روی متن صفحه می‌افتاد */
+  padding: 14px;
+  background: #1A1210;
+  border: 1px solid rgba(196, 130, 109, 0.35);
+  border-radius: 20px;
+  box-shadow: 0 18px 48px -18px rgba(0, 0, 0, 0.55);
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 0.35s ease, transform 0.35s ease;
@@ -681,23 +673,19 @@ select.input {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 14px 10px;
-  background: #1A1210;
-  border: 1px solid rgba(196, 130, 109, 0.35);
-  border-radius: 16px;
-  box-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.35);
 }
 
 .install-prompt__logo {
   width: 48px;
   height: 48px;
   flex-shrink: 0;
-  border-radius: 16px;
-  background: #C4826D;
+  border-radius: 14px;
   border: 1px solid rgba(196, 130, 109, 0.3);
-  object-fit: contain;
-  padding: 4px;
-  filter: brightness(0) invert(1);
+  /* آیکون مربعی است و پس‌زمینه‌ی روشن خودش را دارد؛ فیلتر سفیدکننده
+     و پس‌زمینه‌ی رنگی حذف شد چون لوگوی افقی را به یک لکه‌ی سفید
+     تبدیل می‌کرد */
+  object-fit: cover;
+  background: var(--cream-50);
 }
 
 .install-prompt__content {
@@ -1016,4 +1004,123 @@ select.input {
 @keyframes ink-draw {
   from { clip-path: inset(0 0 0 100%); }
   to   { clip-path: inset(0 0 0 0); }
+}
+
+/* ==========================================================================
+   هدر در موبایل
+   --------------------------------------------------------------------------
+   این بلوک عمداً در انتهای فایل است. نسخه‌ی قبلی وسط فایل بود و چون
+   قانون‌های پایه‌ی .call-btn__text و .profile-box بعد از آن تعریف شده
+   بودند، بازنویسی می‌شد؛ مدیا‌کوئری به specificity اضافه نمی‌کند و در
+   تساوی، قانونِ بعدی برنده است. نتیجه این بود که شماره‌ی تماس در موبایل
+   هم نمایش داده می‌شد، ردیف هدر از عرض صفحه بیرون می‌زد و چون
+   html/body دارای overflow-x: hidden هستند، دکمه‌ی «رزرو نوبت» به‌جای
+   اسکرول، از لبه بریده می‌شد.
+   ========================================================================== */
+
+/* هیچ‌وقت نباید از عرض صفحه بیرون بزند */
+.header__inner {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.header__actions {
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 859px) {
+  /* دکمه‌ی تماس فقط آیکون می‌شود */
+  .call-btn {
+    padding: 0.42rem;
+  }
+  .call-btn__text {
+    display: none;
+  }
+
+  .header__cta {
+    padding: 0.45rem 0.75rem;
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+  }
+
+  .profile-box,
+  .header__actions .btn--sm {
+    padding: 0.4rem 0.7rem;
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+  }
+
+  /* حداقل ۴۴ پیکسل برای لمس راحت (توصیه‌ی اپل و گوگل) */
+  .burger {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* گوشی‌های معمولی و کوچک */
+@media (max-width: 560px) {
+  /* زیرنویس لوگو حذف می‌شود؛ همین متن در هیرو تکرار شده است */
+  .brand__sub {
+    display: none;
+  }
+  .brand__logo {
+    height: 27px;
+  }
+
+  /* «ورود» و «پروفایل» از هدر برداشته می‌شوند — هر دو داخل منوی
+     همبرگری در دسترس‌اند و جایشان به دکمه‌ی رزرو داده می‌شود */
+  .header__actions > .btn--ghost,
+  .header__actions > .profile-box {
+    display: none;
+  }
+
+  .header__actions {
+    gap: 6px;
+  }
+}
+
+/* گوشی‌های خیلی باریک (۳۲۰ تا ۳۶۰ پیکسل) */
+@media (max-width: 380px) {
+  .container {
+    padding-inline: var(--sp-4);
+  }
+  .brand__logo {
+    height: 24px;
+  }
+  .header__cta {
+    padding: 0.4rem 0.6rem;
+  }
+}
+
+/* ---------- حاشیه‌های امن iOS (notch و نوار خانه) ----------
+   صفحه‌ها با viewport-fit=cover لود می‌شوند، پس عناصر ثابت باید
+   خودشان فضای امن را رعایت کنند. */
+.header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.header__inner {
+  height: var(--header-bar-h);
+}
+.mobile-nav {
+  padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+}
+
+/* شبکه‌ی ایمنی: اگر روی گوشی خیلی باریک باز هم جا کم بیاید، به‌جای
+   بیرون‌زدن ردیف (که با overflow-x: hidden از لبه بریده می‌شد)، لوگو
+   کوچک می‌شود. دکمه‌های عملیاتی همیشه کامل باقی می‌مانند. */
+@media (max-width: 560px) {
+  .brand {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .brand__logo {
+    max-width: 100%;
+    object-fit: contain;
+    object-position: right center;
+  }
+}
+
+/* توست هم مثل پاپ‌آپ نصب باید بالای نوار خانه‌ی آیفون بنشیند */
+.toast-host {
+  bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
 }

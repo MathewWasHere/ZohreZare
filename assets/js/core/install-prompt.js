@@ -30,7 +30,7 @@
 
     el.innerHTML =
       '<div class="install-prompt__inner">' +
-        '<img src="assets/img/brand/logo.png" alt="لوگوی اپلیکیشن زهره زارع" class="install-prompt__logo" width="48" height="48">' +
+        '<img src="assets/img/brand/icon-192.png" alt="لوگوی اپلیکیشن زهره زارع" class="install-prompt__logo" width="48" height="48">' +
         '<div class="install-prompt__content">' +
           '<h3 class="install-prompt__title">نصب اپلیکیشن زهره زارع</h3>' +
           '<p class="install-prompt__desc" id="installDesc">دسترسی سریع به خدمات، همیشه روی صفحه اصلی گوشی تو.</p>' +
@@ -93,7 +93,8 @@
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredPrompt = e;
-    showPrompt(false, false);
+    /* کمی صبر تا کاربر اول خود صفحه را ببیند، بعد پیشنهاد نصب بیاید */
+    setTimeout(function () { showPrompt(false, false); }, 2500);
   });
 
   /* Installed */

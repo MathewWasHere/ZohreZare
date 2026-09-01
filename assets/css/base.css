@@ -103,7 +103,12 @@
   --shadow-lg: 0 24px 60px -24px rgba(105, 74, 60, 0.30);
 
   --container: 1140px;
-  --header-h: 68px;
+  /* ارتفاع خودِ نوار هدر */
+  --header-bar-h: 68px;
+  /* ارتفاع مؤثر هدر = نوار + حاشیه‌ی امن بالای آیفون‌های ناچ‌دار.
+     بقیه‌ی صفحه (padding-top هیرو، mobile-nav، scroll-padding) از
+     همین مقدار استفاده می‌کند تا محتوا زیر هدر پنهان نشود. */
+  --header-h: calc(var(--header-bar-h) + env(safe-area-inset-top, 0px));
 
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --dur: 0.28s;
@@ -323,7 +328,7 @@ hr {
     --fs-2xl: 2rem;
     --fs-3xl: 2.75rem;
     --fs-4xl: 3.5rem;
-    --header-h: 76px;
+    --header-bar-h: 76px;
   }
   .section { padding-block: var(--sp-9); }
   .container { padding-inline: var(--sp-6); }

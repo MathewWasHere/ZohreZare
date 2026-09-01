@@ -23,6 +23,9 @@ ZIP="$ROOT/zohrezare-cpanel.zip"
 
 cd "$ROOT"
 
+echo "==> بررسی چیدمان موبایل"
+python3 "$ROOT/tools/check-mobile-css.py" | tail -3
+
 echo "==> پاک‌سازی خروجی قبلی"
 rm -rf "$DIST" "$ZIP"
 mkdir -p "$DIST"
