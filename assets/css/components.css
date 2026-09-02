@@ -361,6 +361,10 @@ select.input {
   outline: 2px solid var(--rose-500);
   outline-offset: 2px;
 }
+.choice__txt {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .choice__title { font-weight: 500; color: var(--ink-900); line-height: 1.6; }
 .choice__meta  { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.7; }
 
@@ -486,6 +490,13 @@ select.input {
 
 .header__actions { display: flex; align-items: center; gap: var(--sp-2); }
 .header__cta { display: inline-flex; }
+/* ارتفاع یکسان برای همه‌ی دکمه‌های هدر تا «رزرو نوبت» و «مشاوره رایگان»
+   هم‌سایز و روی یک خط تراز دیده شوند */
+.header__actions > .btn,
+.header__actions > .call-btn,
+.header__actions > .profile-box {
+  min-height: 42px;
+}
 
 /* دکمه منوی موبایل — سه خط هم‌طول با گوشه‌ی گرد */
 .burger {
@@ -1119,6 +1130,13 @@ select.input {
     white-space: nowrap;
   }
 
+  /* حداقل ۴۴ پیکسل برای لمس راحت — همچنان هم‌ارتفاع با «مشاوره رایگان» */
+  .header__actions > .btn,
+  .header__actions > .call-btn,
+  .header__actions > .profile-box {
+    min-height: 44px;
+  }
+
   .profile-box,
   .header__actions .btn--sm {
     padding: 0.4rem 0.7rem;
@@ -1126,10 +1144,10 @@ select.input {
     white-space: nowrap;
   }
 
-  /* حداقل ۴۴ پیکسل برای لمس راحت (توصیه‌ی اپل و گوگل) */
+  /* حداقل ۴۴ پیکسل برای لمس راحت (توصیه‌ی اپل و گوگل) — هم‌قدِ دکمه‌های کناری */
   .burger {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
 }
 

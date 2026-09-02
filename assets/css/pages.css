@@ -767,7 +767,6 @@
   padding: 10px 14px;
   background: var(--bg-elevated);
 }
-.svc-choice__txt { flex: 1; min-width: 0; }
 .svc-choice__var .choice__txt .choice__title { font-size: var(--fs-sm); }
 .choice__ico {
   flex-shrink: 0;

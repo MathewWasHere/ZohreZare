@@ -45,6 +45,9 @@ const dom = new JSDOM('<!DOCTYPE html><html lang="fa" dir="rtl"><head></head>' +
 const win = dom.window;
 win.scrollTo = () => {};
 win.scrollY = 0;
+/* backend-bridge.js الان (طبق تگ‌های واقعی صفحه) لود می‌شود؛
+   بدون شبکه → حالت آفلاین/دمو، همان مسیر پیش‌فرض تست‌ها */
+win.fetch = () => Promise.reject(new Error('offline'));
 
 /* jsdom پیاده‌سازی download تقویم را ندارد — شبیه‌سازی می‌کنیم */
 let icsBlob = null;
@@ -52,17 +55,20 @@ win.URL.createObjectURL = (b) => { icsBlob = b; return 'blob:test'; };
 win.URL.revokeObjectURL = () => {};
 
 const ctx = dom.getInternalVMContext();
-[
-  'assets/js/core/config.js',
-  'assets/js/core/utils.js',
-  'assets/js/core/store.js',
-  'assets/js/core/api.js',
-  'assets/js/data/services.js',
-  'assets/js/data/auth.js',
-  'assets/js/data/appointments.js',
-  'assets/js/ui/icons.js',
-  'assets/js/ui/dialog.js'
-].forEach((f) => vm.runInContext(read(f), ctx, { filename: f }));
+
+/* مهم: فهرست اسکریپت‌ها را از خود booking.html می‌خوانیم، نه یک فهرست دستی.
+   با این کار اگر تگی (مثل dialog.js) در HTML جا بیفتد، همین تست‌ها شکست
+   می‌خورند — اتفاقی که قبلاً رخ داد و دکمه‌ی «ورود و ثبت درخواست» روی
+   سایت واقعی کار نمی‌کرد ولی تست‌ها سبز بودند. */
+const pageScripts = [];
+{
+  const re = /<script src="([^"]+)"><\/script>/g;
+  let m;
+  while ((m = re.exec(body))) pageScripts.push(m[1]);
+}
+pageScripts
+  .filter((f) => !/^https?:/.test(f) && f !== 'assets/js/pages/booking.js')
+  .forEach((f) => vm.runInContext(read(f), ctx, { filename: f }));
 
 const ZZ = win.ZZ;
 ZZ.shell = () => {};
