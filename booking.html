@@ -53,7 +53,7 @@
 <link rel="stylesheet" href="assets/css/fonts.css?v=19">
 <link rel="stylesheet" href="assets/css/base.css?v=19">
 <link rel="stylesheet" href="assets/css/components.css?v=20">
-<link rel="stylesheet" href="assets/css/pages.css?v=22">
+<link rel="stylesheet" href="assets/css/pages.css?v=23">
 </head>
 <body>
 
@@ -95,7 +95,6 @@
 
           <div class="book-actions">
             <a class="btn btn--ghost" href="services.html">مقایسه‌ی خدمات</a>
-            <button class="btn btn--primary" id="toDateBtn" type="button" disabled>ادامه: انتخاب زمان</button>
           </div>
         </div>
 
@@ -103,7 +102,7 @@
         <div class="book-panel" id="panelTime">
           <h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-2);">چه روزی و چه ساعتی؟</h2>
           <p class="muted" style="font-size:var(--fs-sm);margin-bottom:var(--sp-5);">
-            بازه‌های خاکستری پر شده‌اند. جمعه‌ها تعطیل هستیم.
+            روزهای خاکستری تعطیل یا تکمیل‌اند. زیر هر روز، تعداد ساعت‌های خالی دیده می‌شود.
           </p>
 
           <h3 style="font-size:var(--fs-md);margin-bottom:var(--sp-3);">انتخاب روز</h3>
@@ -121,7 +120,6 @@
 
           <div class="book-actions">
             <button class="btn btn--ghost" id="backToServiceBtn" type="button">مرحله قبل</button>
-            <button class="btn btn--primary" id="toConfirmBtn" type="button" disabled>ادامه: بررسی نهایی</button>
           </div>
         </div>
 
@@ -138,7 +136,6 @@
 
           <div class="book-actions">
             <button class="btn btn--ghost" id="backToTimeBtn" type="button">مرحله قبل</button>
-            <button class="btn btn--primary" id="confirmBtn" type="button">ثبت نهایی نوبت</button>
           </div>
         </div>
 
@@ -149,10 +146,13 @@
             <h2 style="margin-bottom:var(--sp-3);" id="doneTitle">درخواستتان ثبت شد</h2>
             <p class="muted" style="max-width:420px;margin-inline:auto;margin-bottom:var(--sp-5);" id="doneText"></p>
 
-            <div class="summary" style="text-align:start;margin-bottom:var(--sp-5);" id="doneSummary"></div>
+            <div class="summary" style="text-align:start;margin-bottom:var(--sp-4);" id="doneSummary"></div>
+
+            <div class="done-meta" id="doneDetails"></div>
 
             <div class="cta-actions">
-              <a class="btn btn--primary" href="account.html">دیدن نوبت‌های من</a>
+              <button class="btn btn--primary" id="icsBtn" type="button" hidden></button>
+              <a class="btn btn--ghost" href="account.html">دیدن نوبت‌های من</a>
               <a class="btn btn--ghost" href="index.html">بازگشت به خانه</a>
             </div>
           </div>
@@ -163,6 +163,12 @@
   </section>
 
 </main>
+
+<!-- نوار چسبان پایین: دکمه‌ی اصلی هر گام همیشه زیر انگشت کاربر است -->
+<div class="book-cta" id="bookCta" hidden>
+  <div class="book-cta__info" id="ctaInfo" aria-live="polite"></div>
+  <button class="btn btn--primary" id="ctaBtn" type="button" disabled>ادامه</button>
+</div>
 
 <script src="assets/js/core/install-prompt.js"></script>
     <script src="assets/js/core/pwa.js"></script>

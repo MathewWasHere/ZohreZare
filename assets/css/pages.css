@@ -674,24 +674,23 @@
 .book-panel { display: none; }
 .book-panel.is-active { display: block; animation: step-in 0.35s var(--ease); }
 
-/* انتخاب روز */
+/* انتخاب روز — تقویم هفت‌ستونه، بدون اسکرول افقی:
+   ۱۴ روز در دو ردیف کامل دیده می‌شوند و زیر هر روز تعداد
+   ساعت‌های خالی نوشته شده است. */
 .day-strip {
-  display: flex;
-  gap: var(--sp-2);
-  overflow-x: auto;
-  padding-bottom: var(--sp-2);
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
 }
-.day-strip::-webkit-scrollbar { height: 4px; }
-.day-strip::-webkit-scrollbar-thumb { background: var(--ink-200); border-radius: 4px; }
 
 .day-chip {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  min-width: 84px;
-  padding: var(--sp-3) var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 7px 2px 6px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
   background: var(--bg-elevated);
@@ -705,9 +704,47 @@
   color: var(--cream-50);
 }
 .day-chip.is-selected .day-chip__date { color: var(--cream-200); }
-.day-chip:disabled { opacity: 0.4; cursor: not-allowed; }
-.day-chip__day { display: block; font-size: var(--fs-sm); font-weight: 500; line-height: 1.6; }
-.day-chip__date { display: block; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.7; }
+.day-chip.is-selected .day-chip__cnt { color: var(--gold-300); }
+.day-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.day-chip:focus-visible {
+  outline: 2px solid var(--rose-400);
+  outline-offset: 2px;
+}
+.day-chip__day {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.day-chip__date {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+/* تعداد ساعت‌های خالی — دلیلِ روشنِ انتخاب‌پذیر بودن روز */
+.day-chip__cnt {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.625rem;
+  line-height: 1.5;
+  color: var(--success-500);
+  white-space: nowrap;
+}
+.day-chip__cnt.is-full { color: var(--ink-400); }
+
+/* در گوشی‌های خیلی باریک شمارنده‌ها حذف می‌شوند تا خانه‌ها نفس
+   بکشند؛ برچسب «تکمیل» می‌ماند چون دلیل غیرفعال‌بودن را می‌گوید */
+@media (max-width: 359px) {
+  .day-chip__date { font-size: 0.625rem; }
+  .day-chip__cnt { display: none; }
+  .day-chip__cnt.is-full { display: block; }
+}
 
 /* انتخاب ساعت */
 .slot-grid {
@@ -797,8 +834,132 @@
 @keyframes pop {
   0%   { transform: scale(0.6); opacity: 0; }
   60%  { transform: scale(1.08); }
-  100% { transform: scale(1); opacity: 1; }
+  100%  { transform: scale(1); opacity: 1; }
 }
+
+/* ---------- جزئیات صفحه‌ی موفقیت: کد پیگیری، آدرس، مسیریابی ---------- */
+.done-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--cream-50);
+  text-align: start;
+}
+.done-meta__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.done-meta__lbl {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.done-meta__val {
+  font-size: var(--fs-sm);
+  color: var(--ink-900);
+  font-weight: 600;
+  text-align: end;
+  min-width: 0;
+}
+.done-meta__map {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--blush-300);
+  color: var(--rose-600);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: background-color var(--t-fast), border-color var(--t-fast);
+}
+.done-meta__map:hover { background: var(--blush-100); border-color: var(--rose-400); }
+.done-meta__map:focus-visible { outline: 2px solid var(--rose-400); outline-offset: 2px; }
+
+/* ---------- نوار چسبان پایین رزرو ----------
+   دکمه‌ی اصلی هر گام + خلاصه‌ی انتخاب (قیمت/زمان) همیشه در دسترسِ
+   شست کاربر می‌ماند — همان الگوی نوار ذخیره‌ی پنل مدیریت. */
+body.on-booking { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+
+.book-cta {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: 760px;
+  margin-inline: auto;
+  padding: var(--sp-2) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: rgba(255, 252, 250, 0.96);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -6px 24px rgba(79, 56, 52, 0.08);
+}
+.book-cta__info {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.book-cta .btn {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding-inline: 1.4rem;
+  white-space: nowrap;
+}
+.book-cta .btn:disabled { opacity: 0.55; }
+
+/* ---------- پنجره‌ی ورود در همان صفحه (شماره + کد) ---------- */
+.login-box .input { width: 100%; }
+.login-box__links {
+  display: flex;
+  gap: var(--sp-4);
+  margin: var(--sp-2) 0 0;
+}
+.login-box__demo {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--success-500);
+  font-weight: 500;
+}
+.login-box__err {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--danger-500);
+  line-height: 1.8;
+}
+/* دکمه‌ی متنی کوچک — «ارسال دوباره» و «تغییر شماره» */
+.linklike {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rose-600);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.linklike:hover { color: var(--rose-500); }
+.linklike:focus-visible { outline: 2px solid var(--rose-400); outline-offset: 2px; border-radius: 4px; }
 
 /* ==================== حساب کاربری ==================== */
 .account-head {

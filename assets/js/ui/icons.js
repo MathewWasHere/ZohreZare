@@ -32,6 +32,10 @@
     clock: '<circle cx="12" cy="12" r="9" ' + P + '/><path d="M12 7.5V12l3 1.8" ' + P + '/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2.5" ' + P + '/>' +
               '<path d="M3 10h18M8 3v4M16 3v4" ' + P + '/>',
+
+    /* تقویم با علامت + — «افزودن به تقویم» در صفحه‌ی موفقیت رزرو */
+    calendarPlus: '<rect x="3" y="5" width="18" height="16" rx="2.5" ' + P + '/>' +
+                  '<path d="M3 10h18M8 3v4M16 3v4M12 13.5v5M9.5 16h5" ' + P + '/>',
     calendarDays: '<rect x="3" y="5" width="18" height="16" rx="2.5" ' + P + '/>' +
                   '<path d="M3 10h18M8 3v4M16 3v4" ' + P + '/>' +
                   '<circle cx="8.2" cy="13.7" r="0.9" fill="currentColor" stroke="none"/>' +

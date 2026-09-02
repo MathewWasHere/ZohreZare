@@ -69,9 +69,66 @@
     renderSteps();
     if (n < 3) saveDraft();
 
+    /* نوار چسبان تا ثبت نهایی زیر انگشت می‌ماند؛ روی صفحه‌ی موفقیت
+       دیگر دکمه‌ای لازم نیست. */
+    var cta = u.$('#bookCta');
+    if (cta) cta.hidden = n === 3;
+    updateCtaBar();
+
     var top = u.$('#stepsBar').getBoundingClientRect().top + global.scrollY - 90;
     global.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   }
+
+  /* ---------------- نوار چسبان پایین ----------------
+     دکمه‌ی اصلی هر گام + خلاصه‌ی انتخاب (قیمت یا زمان) همیشه در دسترسِ
+     شست کاربر است؛ لازم نیست تا انتهای صفحه اسکرول کند. */
+  function ctaState() {
+    var s = ZZ.services.getById(state.serviceId);
+    var v = s ? ZZ.services.getVariant(state.serviceId, state.variantId) : null;
+    var approve = ZZ.config.approval && ZZ.config.approval.enabled;
+
+    if (state.step === 0) {
+      return {
+        label: 'ادامه: انتخاب زمان',
+        disabled: !(state.serviceId && state.variantId),
+        info: v
+          ? u.esc(v.name) + ' · ' + u.money(v.price) + ' ' + CUR + ' · ' + u.duration(v.durationMin)
+          : 'اول خدمت و گزینه‌ی دقیق را انتخاب کنید'
+      };
+    }
+
+    if (state.step === 1) {
+      var d = state.date ? u.fromKey(state.date) : null;
+      return {
+        label: 'ادامه: بررسی نهایی',
+        disabled: !(state.date && state.time),
+        info: (d && state.time)
+          ? u.esc(u.faDate(d, true)) + ' · ساعت ' + u.toFa(state.time)
+          : 'روز و ساعت را انتخاب کنید'
+      };
+    }
+
+    /* گام بررسی نهایی */
+    return {
+      label: ZZ.auth.isLoggedIn()
+        ? (approve ? 'ثبت درخواست نوبت' : 'ثبت نهایی نوبت')
+        : (approve ? 'ورود و ثبت درخواست' : 'ورود و ثبت نوبت'),
+      disabled: false,
+      info: v ? 'مبلغ تقریبی: ' + u.money(v.price) + ' ' + CUR : ''
+    };
+  }
+
+  function updateCtaBar() {
+    var btn = u.$('#ctaBtn');
+    var info = u.$('#ctaInfo');
+    if (!btn || !info) return;
+    var c = ctaState();
+    btn.textContent = c.label;
+    btn.disabled = c.disabled;
+    info.innerHTML = c.info;
+  }
+
+
 
   /* ---------------- گام ۱: خدمت ---------------- */
   function renderServices() {
@@ -134,9 +191,7 @@
     }).join('');
   }
 
-  function updateStep1Button() {
-    u.$('#toDateBtn').disabled = !(state.serviceId && state.variantId);
-  }
+  function updateStep1Button() { updateCtaBar(); }
 
   /* ---------------- گام ۲: روز و ساعت ---------------- */
   function renderDays() {
@@ -146,13 +201,25 @@
        می‌دهد تا صفحه شلوغ نشود. */
     var days = ZZ.appointments.getDays().slice(0, ZZ.config.booking.daysAhead);
 
-    strip.innerHTML = days.map(function (d) {
-      var open = !d.closed && ZZ.appointments.hasOpenSlot(d.key, state.serviceId);
+    /* تقویم هفت‌ستونه — بدون اسکرول افقی: ۱۴ روز در دو ردیف.
+       زیر هر روز تعداد ساعت‌های خالی دیده می‌شود تا کاربر سراغ
+       روزِ پر نشود؛ روزهای تکمیل هم صریح نوشته می‌شوند. */
+    strip.innerHTML = days.map(function (d, i) {
+      var openCount = d.closed ? 0 : ZZ.appointments.getSlots(d.key, state.serviceId)
+        .filter(function (s) { return s.available; }).length;
+      var open = openCount > 0;
       var sel = state.date === d.key;
+      var title = d.closed ? 'تعطیل' : (open ? d.label : 'ظرفیت این روز تکمیل است');
+      /* دو روز اول با نام کامل (امروز/فردا)؛ بقیه با حرف روز هفته،
+         چون خانه‌ها ۷تایی باریک‌اند */
+      var dayLbl = i < 2 ? u.esc(d.label) : u.esc(u.faWeekdayShort(d.date));
       return '<button type="button" class="day-chip' + (sel ? ' is-selected' : '') + '" ' +
-               'data-date="' + d.key + '"' + (open ? '' : ' disabled') + '>' +
-               '<span class="day-chip__day">' + u.esc(d.label) + '</span>' +
+               'data-date="' + d.key + '" title="' + u.esc(title) + '"' + (open ? '' : ' disabled') + '>' +
+               '<span class="day-chip__day">' + dayLbl + '</span>' +
                '<span class="day-chip__date">' + u.esc(d.closed ? 'تعطیل' : d.short) + '</span>' +
+               (open
+                 ? '<span class="day-chip__cnt">' + u.toFa(openCount) + ' ساعت</span>'
+                 : (d.closed ? '' : '<span class="day-chip__cnt is-full">تکمیل</span>')) +
              '</button>';
     }).join('');
 
@@ -200,9 +267,7 @@
     }).join('');
   }
 
-  function updateStep2Button() {
-    u.$('#toConfirmBtn').disabled = !(state.date && state.time);
-  }
+  function updateStep2Button() { updateCtaBar(); }
 
   /* ---------------- گام ۳: خلاصه ---------------- */
   function summaryHTML() {
@@ -242,33 +307,255 @@
     u.$('#summaryBox').innerHTML = summaryHTML();
 
     var notice = u.$('#authNotice');
-    var btn = u.$('#confirmBtn');
 
     if (ZZ.auth.isLoggedIn()) {
       var user = ZZ.auth.currentUser();
       notice.innerHTML = '<div class="note note--ok">' + ZZ.icon('checkCircle') +
         '<span>به‌عنوان <strong class="ltr phone-num">' + u.prettyPhoneHTML(user.phone) + '</strong> وارد شده‌اید.</span></div>';
-      btn.textContent = (ZZ.config.approval && ZZ.config.approval.enabled)
-        ? 'ثبت درخواست نوبت'
-        : 'ثبت نهایی نوبت';
     } else {
       notice.innerHTML = '<div class="note note--info">' + ZZ.icon('info') +
-        '<span>برای ثبت نوبت باید وارد حساب کاربری شوید. با زدن دکمه‌ی زیر، ' +
-        'شماره‌تان را وارد می‌کنید و بعد از تایید کد، به همین‌جا برمی‌گردید.</span></div>';
-      btn.textContent = (ZZ.config.approval && ZZ.config.approval.enabled)
-        ? 'ورود و ثبت درخواست'
-        : 'ورود و ثبت نوبت';
+        '<span>برای ثبت نوبت، شماره‌ی موبایل خود را تایید کنید. با زدن دکمه‌ی زیر ' +
+        'همان‌جا و بدون ترک این صفحه کد را وارد می‌کنید؛ انتخاب‌هایتان حفظ می‌شود.</span></div>';
+    }
+
+    updateCtaBar();
+  }
+
+  /* ---------------- ورود در همان صفحه ----------------
+     به‌جای پرتاب کاربر به صفحه‌ی ورود، شماره و کد همان‌جا در یک پنجره
+     گرفته می‌شود؛ خلاصه‌ی نوبت زیر پنجره سر جایش می‌ماند و کاربر
+     هیچ‌وقت حس «از جریان خارج شدم» نمی‌گیرد. */
+  function openLoginDialog() {
+    var apiRef = null;
+
+    function showErr(host, msg) {
+      var err = u.$('#dlgErr', host);
+      err.textContent = msg;
+      err.hidden = false;
+    }
+
+    /* یک مرحله: شماره → کد. با «تایید» پیش می‌رود و پنجره تا رسیدن
+       به نتیجه باز می‌ماند (onConfirm همیشه false برمی‌گرداند). */
+    function stage(host, api) {
+      var btn = u.$('[data-confirm]', host);
+      var err = u.$('#dlgErr', host);
+      err.hidden = true;
+
+      /* --- مرحله‌ی ۱: گرفتن کد برای شماره --- */
+      if (u.$('#dlgStep2', host).hidden) {
+        btn.classList.add('is-loading');
+        ZZ.auth.requestCode(u.$('#dlgPhone', host).value)
+          .then(function (res) {
+            btn.classList.remove('is-loading');
+            u.$('#dlgStep2', host).hidden = false;
+            btn.textContent = 'تایید و ثبت نوبت';
+            u.$('#dlgCode', host).focus();
+
+            /* حالت نمایشی: کد روی صفحه نشان داده می‌شود */
+            var demo = u.$('#dlgDemo', host);
+            if (demo) {
+              if (res && res.code) {
+                demo.textContent = 'کد نمایشی: ' + u.toFa(res.code);
+                demo.hidden = false;
+              } else {
+                demo.hidden = true;
+              }
+            }
+          })
+          .catch(function (e) {
+            btn.classList.remove('is-loading');
+            showErr(host, (e && e.message) || 'ارسال کد ناموفق بود.');
+            u.$('#dlgPhone', host).focus();
+          });
+        return false;
+      }
+
+      /* --- مرحله‌ی ۲: تایید کد --- */
+      btn.classList.add('is-loading');
+      ZZ.auth.verifyCode(u.$('#dlgCode', host).value)
+        .then(function () {
+          api.close(true);
+        })
+        .catch(function (e) {
+          btn.classList.remove('is-loading');
+          showErr(host, (e && e.message) || 'کد تایید نشد.');
+          u.$('#dlgCode', host).focus();
+        });
+      return false;
+    }
+
+    return ZZ.dialog.open({
+      title: 'تایید شماره موبایل',
+      hint: 'برای ثبت نوبت فقط شماره‌ی موبایل لازم است.',
+      body:
+        '<div class="login-box">' +
+          '<label class="field"><span class="field__label" for="dlgPhone">شماره موبایل</span>' +
+          '<input class="input ltr phone-num" id="dlgPhone" type="tel" inputmode="tel" ' +
+            'autocomplete="tel" placeholder="09…" maxlength="14"></label>' +
+          '<div id="dlgStep2" hidden>' +
+            '<label class="field"><span class="field__label" for="dlgCode">کد تایید پیامک‌شده</span>' +
+            '<input class="input ltr" id="dlgCode" type="text" inputmode="numeric" ' +
+              'autocomplete="one-time-code" maxlength="6" placeholder="----"></label>' +
+            '<p class="login-box__links">' +
+              '<button type="button" class="linklike" id="dlgResend">ارسال دوباره‌ی کد</button>' +
+              '<button type="button" class="linklike" id="dlgChange">تغییر شماره</button>' +
+            '</p>' +
+          '</div>' +
+          '<p class="login-box__demo" id="dlgDemo" hidden></p>' +
+          '<p class="login-box__err" id="dlgErr" role="alert" hidden></p>' +
+        '</div>',
+      confirmLabel: 'دریافت کد',
+      cancelLabel: 'انصراف',
+      onMount: function (host, api) {
+        apiRef = api;
+
+        var phone = u.$('#dlgPhone', host);
+        var confirmBtn = u.$('[data-confirm]', host);
+
+        /* Enter در هر فیلد یعنی همان کلیک روی «تایید» */
+        [phone, u.$('#dlgCode', host)].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              confirmBtn.click();
+            }
+          });
+        });
+
+        u.$('#dlgResend', host).addEventListener('click', function () {
+          u.$('#dlgErr', host).hidden = true;
+          stage(host, api);
+        });
+        u.$('#dlgChange', host).addEventListener('click', function () {
+          u.$('#dlgErr', host).hidden = true;
+          u.$('#dlgDemo', host).hidden = true;
+          u.$('#dlgStep2', host).hidden = true;
+          confirmBtn.textContent = 'دریافت کد';
+          phone.focus();
+        });
+
+        setTimeout(function () { if (phone) phone.focus(); }, 60);
+      },
+      onConfirm: function (host) {
+        return stage(host, apiRef);
+      }
+    });
+  }
+
+  /* ---------------- صفحه‌ی موفقیت ---------------- */
+
+  /** کد کوتاه پیگیری — از شناسه‌ی نوبت ساخته می‌شود تا مشتری هنگام
+      تماس سالن به آن اشاره کند و طرفین همان نوبت را منظور کنند */
+  function trackCode(id) {
+    var s = u.toEn(String(id || '')).replace(/[^0-9a-zA-Z]/g, '');
+    return s.slice(-6).toUpperCase() || '—';
+  }
+
+  /** فایل تقویم (iCal) — کاملاً در مرورگر ساخته می‌شود؛ بدون سرویس
+      بیرونی. تاریخ‌ها محلی‌اند (بدون TZ) که تقویم گوشی خودش درست
+      تفسیر می‌کند. */
+  function buildICS(appt) {
+    var s = ZZ.services.getById(appt.serviceId);
+    var v = ZZ.services.getVariant(appt.serviceId, appt.variantId);
+    var dur = (v && v.durationMin) || appt.durationMin || 90;
+
+    var start = u.fromKey(appt.date);
+    var hm = String(appt.time).split(':');
+    start.setHours(+hm[0] || 0, +hm[1] || 0, 0, 0);
+    var end = new Date(start.getTime() + dur * 60000);
+
+    function stamp(d) {
+      return d.getFullYear() +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        String(d.getDate()).padStart(2, '0') + 'T' +
+        String(d.getHours()).padStart(2, '0') +
+        String(d.getMinutes()).padStart(2, '0') + '00';
+    }
+    function escIcs(t) {
+      return String(t == null ? '' : t)
+        .replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+        .replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+
+    var brand = ZZ.config.brand || {};
+    var addr = brand.address || '';
+
+    return [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ZohreZare//Booking//FA',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      'UID:' + appt.id + '@zohrezare',
+      'DTSTAMP:' + stamp(new Date()),
+      'DTSTART:' + stamp(start),
+      'DTEND:' + stamp(end),
+      'SUMMARY:' + escIcs((s ? s.title : 'نوبت') + (v ? ' — ' + v.name : '') + ' | ' + (brand.name || '')),
+      'LOCATION:' + escIcs(addr),
+      'DESCRIPTION:' + escIcs('کد پیگیری: ' + trackCode(appt.id) +
+        (appt.note ? '\nتوضیح: ' + appt.note : '')),
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+  }
+
+  /** کد پیگیری + آدرس + مسیریابی + «افزودن به تقویم» */
+  function renderDoneExtras(appt) {
+    var box = u.$('#doneDetails');
+    var icsBtn = u.$('#icsBtn');
+    var brand = ZZ.config.brand || {};
+    var addr = brand.address || '';
+    var addrShort = brand.addressShort || addr;
+    var geo = brand.geo;
+    var code = trackCode(appt.id);
+
+    box.innerHTML =
+      '<div class="done-meta__row">' +
+        '<span class="done-meta__lbl">کد پیگیری</span>' +
+        '<strong class="done-meta__val ltr" dir="ltr">' + u.esc(code) + '</strong>' +
+      '</div>' +
+      '<div class="done-meta__row">' +
+        '<span class="done-meta__lbl">آدرس سالن</span>' +
+        '<span class="done-meta__val">' + u.esc(addrShort) + '</span>' +
+      '</div>' +
+      (addr
+        ? '<a class="done-meta__map" href="https://maps.google.com/?q=' +
+            encodeURIComponent(geo ? (geo.lat + ',' + geo.lng) : addr) + '" ' +
+            'target="_blank" rel="noopener">' + ZZ.icon('pin', null, 15) + 'مسیریابی</a>'
+        : '');
+
+    /* «افزودن به تقویم» فقط جایی که مرورگر از Blob پشتیبانی می‌کند */
+    if (global.Blob && global.URL && global.URL.createObjectURL) {
+      icsBtn.hidden = false;
+      icsBtn.innerHTML = ZZ.icon('calendarPlus', null, 16) + 'افزودن به تقویم';
+      icsBtn.onclick = function () {
+        var blob = new global.Blob([buildICS(appt)], { type: 'text/calendar;charset=utf-8' });
+        var url = global.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'nobat-' + code + '.ics';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { global.URL.revokeObjectURL(url); }, 2000);
+        ZZ.toast.ok('به تقویمتان اضافه شد');
+      };
     }
   }
 
   /* ---------------- ثبت نهایی ---------------- */
   function submit() {
-    var btn = u.$('#confirmBtn');
+    var btn = u.$('#ctaBtn');
 
-    /* اگر وارد نشده: پیش‌نویس را نگه دار و به صفحه‌ی ورود برو */
+    /* اگر وارد نشده: ورود در همان صفحه (پنجره‌ی شماره و کد)؛
+       پیش‌نویس هم ذخیره می‌شود تا اگر اتفاقی افتاد، همه‌چیز در امان باشد */
     if (!ZZ.auth.isLoggedIn()) {
       saveDraft();
-      global.location.href = 'auth.html?next=' + encodeURIComponent('booking.html?resume=1');
+      openLoginDialog().then(function (ok) {
+        if (!ok) return;
+        renderConfirm();   /* اطلاعِ «وارد شدید» تازه شود */
+        submit();          /* و ثبت، همان‌جا ادامه پیدا کند */
+      });
       return;
     }
 
@@ -298,6 +585,7 @@
             'تا حدود ' + u.toFa(respHours) + ' ساعت آینده برای هماهنگی نهایی با شما تماس می‌گیریم.'
           : 'منتظرتان هستیم؛ ' + u.faDate(d) + ' ساعت ' + u.toFa(appt.time) + '.';
         u.$('#doneSummary').innerHTML = summaryHTML();
+        renderDoneExtras(appt);
 
         goStep(3);
         ZZ.toast.ok(pending ? 'درخواست شما ثبت شد' : 'نوبت شما با موفقیت ثبت شد');
@@ -317,8 +605,18 @@
   }
 
   /* ---------------- راه‌اندازی ---------------- */
+  var bound = false;
+
   document.addEventListener('DOMContentLoaded', function () {
+    /* گارد در برای دوبار اجرا شدنِ رویداد (مثلاً در محیط تست):
+       شنونده‌های واگذارشده نباید دوباره بسته شوند. */
+    if (bound) return;
+    bound = true;
+
     ZZ.shell({ active: 'booking' });
+
+    /* CSS با این کلاس برای نوار چسبانِ پایین، جا باز می‌کند */
+    document.body.classList.add('on-booking');
 
     /* اگر بک‌اند فعال است، تقویم به‌صورت ناهمگام می‌آید.
        این رویداد وقتی داده رسید منتشر می‌شود تا دوباره رندر کنیم. */
@@ -375,11 +673,20 @@
       saveDraft();
     });
 
-    u.$('#toDateBtn').addEventListener('click', function () {
-      renderDays();
-      renderSlots();
-      updateStep2Button();
-      goStep(1);
+    /* دکمه‌ی اصلی همه‌ی گام‌ها — در نوار چسبان پایین صفحه */
+    u.$('#ctaBtn').addEventListener('click', function () {
+      if (this.disabled) return;
+      if (state.step === 0) {
+        renderDays();
+        renderSlots();
+        updateStep2Button();
+        goStep(1);
+      } else if (state.step === 1) {
+        renderConfirm();
+        goStep(2);
+      } else if (state.step === 2) {
+        submit();
+      }
     });
 
     /* --- گام ۲ --- */
@@ -414,11 +721,6 @@
 
     u.$('#backToServiceBtn').addEventListener('click', function () { goStep(0); });
 
-    u.$('#toConfirmBtn').addEventListener('click', function () {
-      renderConfirm();
-      goStep(2);
-    });
-
     /* --- گام ۳ --- */
     u.$('#backToTimeBtn').addEventListener('click', function () {
       renderDays();
@@ -426,7 +728,6 @@
       updateStep2Button();
       goStep(1);
     });
-    u.$('#confirmBtn').addEventListener('click', submit);
 
     /* --- پرش به مرحله‌ی درست ---
        فقط بعد از برگشت واقعی از صفحه‌ی ورود (?resume=1) به مرحله‌ی

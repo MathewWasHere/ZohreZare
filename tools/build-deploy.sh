@@ -38,6 +38,9 @@ node "$ROOT/tools/check-admin-panel.js" | tail -2
 echo "==> بررسی جریان تعاملی ویرایشگر خدمت"
 node "$ROOT/tools/check-editor-flow.js" | tail -2
 
+echo "==> بررسی تجربه‌ی تعاملی رزرو"
+node "$ROOT/tools/check-booking-ux.js" | tail -2
+
 echo "==> بررسی نحو و امنیت فایل‌های PHP"
 node "$ROOT/tools/check-php.js" | tail -2
 

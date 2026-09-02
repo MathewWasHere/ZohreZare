@@ -100,6 +100,12 @@
       return f ? f.format(d) : '';
     },
 
+    /** حرف روز هفته — برای خانه‌های کوچک تقویم (ش ی د س چ پ ج) */
+    faWeekdayShort: function (d) {
+      var map = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'];   /* 0=یکشنبه … 6=شنبه */
+      return map[d.getDay()] || '';
+    },
+
     /** «امروز» / «فردا» / نام روز */
     faDayLabel: function (d) {
       var today = new Date(); today.setHours(0, 0, 0, 0);
