@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zohrezare-v9';
+const CACHE_NAME = 'zohrezare-v10';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
   './booking.html',
   './service.html',
   './panel/index.html',
+  './panel/admin/index.html',
   './assets/css/fonts.css',
   './assets/css/base.css',
   './assets/css/components.css',

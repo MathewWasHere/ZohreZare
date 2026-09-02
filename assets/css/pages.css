@@ -2704,3 +2704,440 @@
 .appt--pending {
   border-color: var(--gold-300);
 }
+
+/* ==========================================================================
+   بازطراحی پنل مدیریت (UX/UI)
+   --------------------------------------------------------------------------
+   این بلاک بالای استایل‌های قدیمی می‌نشیند و پنل را به‌صورت کارت‌های
+   خوانا، با تب‌های دسته‌بندی‌شده و عملیاتِ هم‌تراز بازسازی می‌کند.
+   ========================================================================== */
+
+/* ---------- سربرگ ---------- */
+.panel-head__actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.panel-head .head-link {
+  color: var(--cream-100);
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+.panel-head .head-logout {
+  color: var(--cream-100);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+.panel-head .head-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ---------- تب‌های مدیریت ---------- */
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px;
+  margin: 0 0 var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-soft);
+}
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0.7rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+  white-space: nowrap;
+}
+.admin-tab svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.admin-tab:hover {
+  border-color: var(--blush-300);
+  color: var(--ink-900);
+}
+.admin-tab.is-active {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+  color: var(--cream-50);
+}
+.admin-tab.is-active svg {
+  color: var(--rose-300);
+}
+
+/* ---------- نوار ابزار نوبت‌ها ---------- */
+.admin-toolbar {
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+}
+.admin-toolbar .input {
+  width: 100%;
+  max-width: none;
+}
+@media (min-width: 760px) {
+  .admin-toolbar .input { max-width: 300px; }
+}
+
+/* ---------- فهرست کارتی نوبت‌ها ---------- */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.admin-appt {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.admin-appt:hover {
+  border-color: var(--blush-300);
+  box-shadow: var(--shadow-sm);
+}
+.admin-appt--pending {
+  border-color: var(--gold-300);
+  background: linear-gradient(0deg, rgba(253, 241, 220, 0.35), rgba(255, 252, 250, 0.8));
+}
+.admin-appt.is-cancelled {
+  opacity: 0.68;
+}
+.admin-appt__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px dashed var(--line);
+}
+.admin-appt__when {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.admin-appt__date {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+.admin-appt__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.admin-appt__time svg {
+  width: 14px;
+  height: 14px;
+  color: var(--rose-400);
+}
+.admin-appt__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-appt__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+}
+@media (min-width: 820px) {
+  .admin-appt__body {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.35fr) minmax(0, 0.9fr);
+  }
+}
+.admin-appt__service,
+.admin-appt__customer,
+.admin-appt__money {
+  min-width: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--cream-50);
+}
+.admin-appt__service strong,
+.admin-appt__customer strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-900);
+  line-height: 1.6;
+}
+.admin-appt__service small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.admin-appt__money strong {
+  display: block;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--rose-600);
+  line-height: 1.7;
+}
+.admin-appt__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.admin-appt__tel {
+  margin-top: 8px;
+}
+.admin-appt__note,
+.admin-appt__reject {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-xs);
+  line-height: 1.8;
+  background: var(--cream-100);
+  color: var(--text-muted);
+}
+.admin-appt__note svg,
+.admin-appt__reject svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.admin-appt__reject {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+.admin-appt__actions {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line);
+}
+
+/* ---------- دکمه‌های عملیات — هم‌تراز و بدون روی‌هم‌افتادگی ---------- */
+.row-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+.row-actions .btn {
+  min-width: 0;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.row-actions .btn svg {
+  width: 15px;
+  height: 15px;
+}
+@media (max-width: 560px) {
+  .row-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---------- نشان‌های ریسک ---------- */
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: var(--r-full);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.admin-chip svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.admin-chip--danger {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+.admin-chip--new {
+  background: var(--blush-100);
+  color: var(--rose-600);
+}
+
+/* ---------- ویرایشگر خدمت — بخش‌بندی واضح ---------- */
+.svc-section {
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.svc-section__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--cream-50);
+  border-bottom: 1px solid var(--line);
+}
+.svc-section__num {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--blush-100);
+  color: var(--rose-600);
+  font-weight: 600;
+}
+.svc-section__title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+  line-height: 1.6;
+}
+.svc-section__desc {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.svc-section__body {
+  padding: var(--sp-4);
+}
+.svc-subgroup {
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px dashed var(--line);
+}
+.svc-subgroup:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.svc-subgroup .svc-sub {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* گزینه‌ی خدمت — مرتب‌تر و قابل‌فهم‌تر */
+.svc-var {
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+}
+.svc-var__grid {
+  gap: var(--sp-3);
+}
+@media (min-width: 620px) {
+  .svc-var__grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+.svc-var__foot {
+  padding-top: var(--sp-3);
+  margin-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+.svc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  font-weight: 500;
+}
+.svc-card__body__inner {
+  padding: var(--sp-4);
+}
+.svc-editor__actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-4);
+}
+.svc-editor__actions .btn {
+  flex: 1 1 auto;
+  min-width: 150px;
+  justify-content: center;
+}
+
+/* ---------- مدیریت روزها — صفحه‌بندی تمیز ---------- */
+.day-manage {
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+}
+.day-list {
+  max-height: 560px;
+}
+.admin-slots {
+  gap: var(--sp-3);
+}
+.admin-slot {
+  padding: 0.95rem;
+  border-radius: var(--r-lg);
+}
+
+/* ---------- موبایل پنل ---------- */
+@media (max-width: 640px) {
+  .admin-appt {
+    padding: var(--sp-3);
+  }
+  .admin-appt__top {
+    flex-direction: column;
+  }
+  .admin-appt__badges {
+    width: 100%;
+  }
+  .admin-appt__body {
+    grid-template-columns: 1fr;
+  }
+  .admin-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .admin-tab {
+    flex: 0 0 auto;
+  }
+  .panel-head__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .panel-head__actions .badge,
+  .panel-head__actions .btn {
+    flex: 0 0 auto;
+  }
+}

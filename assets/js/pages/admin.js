@@ -292,6 +292,19 @@
     return '<div class="row-actions">' + btns.join('') + '</div>';
   }
 
+  /** آیا این ردیف سابقه‌ی پرریسک دارد؟ */
+  function riskHTML(a, hist) {
+    if (!hist || a.status !== 'pending') return '';
+    if (hist.suggestDeposit) {
+      return '<span class="admin-chip admin-chip--danger" title="این مراجعه‌کننده سابقه‌ی غیبت دارد">' +
+        ZZ.icon('info', null, 13) + 'سابقه‌ی ' + u.toFa(hist.noShow) + ' غیبت</span>';
+    }
+    if (hist.isNew) {
+      return '<span class="admin-chip admin-chip--new">' + ZZ.icon('sparkle', null, 13) + 'مراجعه‌کننده‌ی جدید</span>';
+    }
+    return '';
+  }
+
   function renderAppointments() {
     var key = 'appts:' + state.filter + ':' + state.q;
     var rows = pull(key, function () {
@@ -313,8 +326,6 @@
 
     var body = rows.map(function (r) {
       var a = r.appt;
-      /* در حالت سرور، برچسب وضعیت آماده می‌آید؛ در حالت محلی
-         باید محاسبه شود. */
       var st = a.statusLabel
         ? { text: a.statusLabel, cls: a.statusClass || 'badge--ok' }
         : ZZ.appointments.statusLabel(a);
@@ -322,64 +333,62 @@
       var canCancel = a.status === 'confirmed' && !r.isPast;
       var dep = a.deposit || null;
       var hist = r.history || null;
+      var svcTitle = r.service && r.service.title ? r.service.title : '—';
+      var variant = r.variant && r.variant.name ? r.variant.name : '';
 
-      return '<tr class="' + (a.status === 'cancelled' ? 'is-cancelled' : '') + '">' +
-        '<td data-label="تاریخ">' +
-          '<div class="admin-cell__date">' + u.faDate(d) + '</div>' +
-          '<div class="admin-cell__time">ساعت ' + u.toFa(a.time) + '</div>' +
-        '</td>' +
-        '<td data-label="خدمت">' +
-          '<div class="admin-cell__svc">' + u.esc(r.service ? r.service.title : '—') + '</div>' +
-          '<div class="admin-cell__var">' + u.esc(r.variant ? r.variant.name : '') + '</div>' +
-        '</td>' +
-        '<td data-label="مراجعه‌کننده">' +
-          '<div class="admin-cell__name">' + u.esc(r.user && r.user.name ? r.user.name : 'بدون نام') + '</div>' +
-          birthCell(r.user) +
-        '</td>' +
-        '<td data-label="تماس">' + telCell(r.user) + '</td>' +
-        '<td data-label="مبلغ">' +
-          '<span class="nowrap">' + u.money(a.price) + ' ' + CUR + '</span>' +
-          (dep
-            ? '<div class="dep-chip" title="' + u.esc(depMethodLabel(dep) + (dep.ref ? ' — کد ' + dep.ref : '')) + '">' +
-                ZZ.icon('checkCircle', null, 13) +
-                'بیعانه ' + u.money(dep.amount) +
-              '</div>'
+      return '' +
+        '<article class="admin-appt admin-appt--' + a.status + (a.status === 'cancelled' ? ' is-cancelled' : '') + '">' +
+          '<div class="admin-appt__top">' +
+            '<div class="admin-appt__when">' +
+              '<span class="admin-appt__date">' + u.esc(u.faDate(d)) + '</span>' +
+              '<span class="admin-appt__time">' + ZZ.icon('clock', null, 14) + 'ساعت ' + u.toFa(a.time) + '</span>' +
+            '</div>' +
+            '<div class="admin-appt__badges">' +
+              '<span class="badge ' + st.cls + '">' + st.text + '</span>' +
+              riskHTML(a, hist) +
+            '</div>' +
+          '</div>' +
+
+          '<div class="admin-appt__body">' +
+            '<div class="admin-appt__service">' +
+              '<span class="admin-appt__label">خدمت</span>' +
+              '<strong>' + u.esc(svcTitle) + '</strong>' +
+              (variant ? '<small>' + u.esc(variant) + '</small>' : '') +
+            '</div>' +
+
+            '<div class="admin-appt__customer">' +
+              '<span class="admin-appt__label">مراجعه‌کننده</span>' +
+              '<strong>' + u.esc(r.user && r.user.name ? r.user.name : 'بدون نام') + '</strong>' +
+              birthCell(r.user) +
+              '<div class="admin-appt__tel">' + telCell(r.user) + '</div>' +
+            '</div>' +
+
+            '<div class="admin-appt__money">' +
+              '<span class="admin-appt__label">مبلغ</span>' +
+              '<strong class="nowrap">' + u.money(a.price) + ' ' + CUR + '</strong>' +
+              (dep
+                ? '<span class="dep-chip" title="' + u.esc(depMethodLabel(dep) + (dep.ref ? ' — کد ' + dep.ref : '')) + '">' +
+                    ZZ.icon('checkCircle', null, 13) + 'بیعانه ' + u.money(dep.amount) +
+                  '</span>'
+                : '') +
+            '</div>' +
+          '</div>' +
+
+          (a.note
+            ? '<div class="admin-appt__note">' + ZZ.icon('edit', null, 14) + u.esc(a.note) + '</div>'
             : '') +
-        '</td>' +
-        '<td data-label="وضعیت">' +
-          '<span class="badge ' + st.cls + '">' + st.text + '</span>' +
-          (a.status === 'pending' && hist && hist.suggestDeposit
-            ? '<div class="risk-hint" title="این مراجعه‌کننده سابقه‌ی غیبت دارد">' +
-                ZZ.icon('info', null, 13) + 'سابقه‌ی ' + u.toFa(hist.noShow) + ' غیبت' +
-              '</div>'
-            : '') +
-          (a.status === 'pending' && hist && hist.isNew
-            ? '<div class="risk-hint risk-hint--new">مراجعه‌کننده‌ی جدید</div>'
-            : '') +
+
           (a.status === 'rejected' && a.rejectReason
-            ? '<div class="risk-hint">' + u.esc(a.rejectReason) + '</div>'
+            ? '<div class="admin-appt__reject">' + ZZ.icon('x', null, 14) + u.esc(a.rejectReason) + '</div>'
             : '') +
-        '</td>' +
-        '<td data-label="عملیات">' + actionsHTML(a, r, canCancel) + '</td>' +
-      '</tr>' +
-      (a.note
-        ? '<tr class="' + (a.status === 'cancelled' ? 'is-cancelled' : '') + '">' +
-            '<td colspan="7" data-label="یادداشت" style="padding-top:0;">' +
-              '<div class="appt__note" style="margin:0;">' + ZZ.icon('edit', null, 14) + ' ' + u.esc(a.note) + '</div>' +
-            '</td>' +
-          '</tr>'
-        : '');
+
+          '<div class="admin-appt__actions">' +
+            actionsHTML(a, r, canCancel) +
+          '</div>' +
+        '</article>';
     }).join('');
 
-    return '<div class="admin-table-wrap">' +
-      '<table class="admin-table">' +
-        '<thead><tr>' +
-          '<th>تاریخ و ساعت</th><th>خدمت</th><th>مراجعه‌کننده</th>' +
-          '<th>تماس</th><th>مبلغ و بیعانه</th><th>وضعیت</th><th>عملیات</th>' +
-        '</tr></thead>' +
-        '<tbody>' + body + '</tbody>' +
-      '</table>' +
-    '</div>';
+    return '<div class="admin-list">' + body + '</div>';
   }
 
   /* ---------------- تب مدیریت روزها ---------------- */
@@ -487,6 +496,20 @@
 
   /* ---------------- تب مدیریت خدمات ---------------- */
 
+  /** بسته‌بندی هر بخش از ویرایشگر خدمت */
+  function svcSection(num, title, desc, inner) {
+    return '<section class="svc-section">' +
+      '<header class="svc-section__head">' +
+        '<span class="svc-section__num">' + u.toFa(num) + '</span>' +
+        '<div>' +
+          '<h3 class="svc-section__title">' + u.esc(title) + '</h3>' +
+          (desc ? '<p class="svc-section__desc">' + u.esc(desc) + '</p>' : '') +
+        '</div>' +
+      '</header>' +
+      '<div class="svc-section__body">' + inner + '</div>' +
+    '</section>';
+  }
+
   function renderServices() {
     if (!state.services) {
       /* هنوز نیامده — در پس‌زمینه بگیر */
@@ -565,41 +588,50 @@
         '</button>' +
 
         '<div class="svc-card__body"><div class="svc-card__body__inner">' +
-          '<label class="svc-field">' +
-            '<span>نام خدمت</span>' +
-            '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
-          '</label>' +
-          '<label class="svc-field">' +
-            '<span>توضیح کوتاه (زیر عنوان کارت)</span>' +
-            '<textarea class="input" data-s="short" rows="2">' + u.esc(s.short || '') + '</textarea>' +
-          '</label>' +
-          '<label class="svc-field">' +
-            '<span>لینک اینستاگرام (اختیاری)</span>' +
-            '<input class="input ltr" type="url" data-s="ig_link" ' +
-              'placeholder="https://instagram.com/…" value="' + u.esc(s.ig_link || '') + '">' +
-          '</label>' +
+          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، توضیح کوتاه و لینک اینستاگرام.', 
+            '<label class="svc-field">' +
+              '<span>نام خدمت</span>' +
+              '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
+            '</label>' +
+            '<label class="svc-field">' +
+              '<span>توضیح کوتاه (زیر عنوان کارت)</span>' +
+              '<textarea class="input" data-s="short" rows="2">' + u.esc(s.short || '') + '</textarea>' +
+            '</label>' +
+            '<label class="svc-field">' +
+              '<span>لینک اینستاگرام (اختیاری)</span>' +
+              '<input class="input ltr" type="url" data-s="ig_link" ' +
+                'placeholder="https://instagram.com/…" value="' + u.esc(s.ig_link || '') + '">' +
+            '</label>'
+          ) +
 
-          '<h4 class="svc-sub">گزینه‌ها و قیمت‌ها</h4>' +
-          '<div class="svc-vars">' + rows + '</div>' +
+          svcSection(2, 'گزینه‌ها و قیمت‌ها', 'هر گزینه، قیمت و مدت مخصوص خودش را دارد.', 
+            '<div class="svc-vars">' + rows + '</div>'
+          ) +
 
-          /* ---- تگ‌ها ---- */
-          '<h4 class="svc-sub">تگ‌ها — «مناسب برای»</h4>' +
-          listEditor('good_for', s.good_for || [], 'مثلاً: مژه‌های کم‌پشت', true) +
-
-          /* ---- متن‌های صفحه ---- */
-          '<h4 class="svc-sub">متن معرفی</h4>' +
-          '<p class="svc-hint">هر بند یک پاراگراف جدا در صفحه‌ی خدمت است.</p>' +
-          listEditor('description', s.description || [], 'متن پاراگراف…', false) +
-
-          '<h4 class="svc-sub">این خدمت شامل چه چیزهایی می‌شود</h4>' +
-          listEditor('includes', s.includes || [], 'مثلاً: مشاوره‌ی رایگان', false) +
-
-          '<h4 class="svc-sub">مراقبت‌های بعد از انجام</h4>' +
-          listEditor('aftercare', s.aftercare || [], 'مثلاً: تا ۲۴ ساعت آب نزنید', false) +
-
-          /* ---- پرسش‌های متداول ---- */
-          '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
-          faqEditor(s.faq || []) +
+          svcSection(3, 'محتوای صفحه‌ی خدمت', 'این بخش همان چیزی است که مشتری در صفحه‌ی جزئیات می‌بیند.',
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">تگ‌ها — «مناسب برای»</h4>' +
+              listEditor('good_for', s.good_for || [], 'مثلاً: مژه‌های کم‌پشت', true) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">متن معرفی</h4>' +
+              '<p class="svc-hint">هر بند یک پاراگراف جدا در صفحه‌ی خدمت است.</p>' +
+              listEditor('description', s.description || [], 'متن پاراگراف…', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">این خدمت شامل چه چیزهایی می‌شود</h4>' +
+              listEditor('includes', s.includes || [], 'مثلاً: مشاوره‌ی رایگان', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">مراقبت‌های بعد از انجام</h4>' +
+              listEditor('aftercare', s.aftercare || [], 'مثلاً: تا ۲۴ ساعت آب نزنید', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
+              '<p class="svc-hint">پرسش‌ها برای مشتری بالای صفحه‌ی خدمت نمایش داده می‌شوند.</p>' +
+              faqEditor(s.faq || []) +
+            '</div>'
+          ) +
 
           '<div class="svc-editor__actions">' +
             '<button class="btn btn--primary btn--sm" data-save="' + s.id + '">' +
@@ -749,13 +781,14 @@
           '<div class="panel-head__row">' +
             '<div>' +
               '<h1>پنل مدیریت</h1>' +
-              '<p>خوش آمدید ' + u.esc(user.name || 'مدیر') + ' — همه‌ی نوبت‌ها و تنظیمات تقویم اینجاست.</p>' +
+              '<p>خوش آمدید ' + u.esc(user.name || 'مدیر') + ' — نوبت‌های در انتظار، امروز و آمار سالن را اینجا می‌بینید.</p>' +
             '</div>' +
-            '<div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;">' +
+            '<div class="panel-head__actions">' +
               '<span class="badge badge--gold">' + ZZ.icon('shield', null, 14) + 'دسترسی مدیر</span>' +
-              '<a class="btn btn--ghost btn--sm" href="' + B + 'panel/index.html" ' +
-                 'style="color:var(--cream-100);border-color:rgba(255,255,255,.3);">پنل کاربری من</a>' +
-              '<button class="btn btn--quiet btn--sm" id="logoutBtn" style="color:var(--ink-300);">' +
+              '<a class="btn btn--ghost btn--sm head-link" href="' + B + 'panel/index.html">' +
+                '<span class="ltr">' + u.prettyPhoneHTML(user.phone || '') + '</span>' +
+              '</a>' +
+              '<button class="btn btn--quiet btn--sm head-logout" id="logoutBtn">' +
                 ZZ.icon('logout', null, 16) + 'خروج</button>' +
             '</div>' +
           '</div>' +
@@ -774,13 +807,13 @@
         '</div>' +
 
         /* ---- تب‌ها ---- */
-        '<div class="tabs" role="tablist">' +
-          '<button class="tab' + (state.tab === 'appointments' ? ' is-active' : '') + '" ' +
-            'data-tab="appointments" role="tab">نوبت‌ها</button>' +
-          '<button class="tab' + (state.tab === 'days' ? ' is-active' : '') + '" ' +
-            'data-tab="days" role="tab">مدیریت روزها و ساعت‌ها</button>' +
-          '<button class="tab' + (state.tab === 'services' ? ' is-active' : '') + '" ' +
-            'data-tab="services" role="tab">خدمات و قیمت‌ها</button>' +
+        '<div class="admin-tabs" role="tablist">' +
+          '<button class="admin-tab' + (state.tab === 'appointments' ? ' is-active' : '') + '" ' +
+            'data-tab="appointments" role="tab">' + ZZ.icon('calendar', null, 17) + 'نوبت‌ها</button>' +
+          '<button class="admin-tab' + (state.tab === 'days' ? ' is-active' : '') + '" ' +
+            'data-tab="days" role="tab">' + ZZ.icon('grid', null, 17) + 'روزها و ساعت‌ها</button>' +
+          '<button class="admin-tab' + (state.tab === 'services' ? ' is-active' : '') + '" ' +
+            'data-tab="services" role="tab">' + ZZ.icon('tag', null, 17) + 'خدمات و محتوا</button>' +
         '</div>' +
 
         (state.tab === 'services'

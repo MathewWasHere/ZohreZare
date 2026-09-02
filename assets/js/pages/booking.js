@@ -329,25 +329,35 @@
 
     u.$('#doneIcon').innerHTML = ZZ.icon('checkCircle', null, 38);
 
-    /* --- بازیابی وضعیت: از پیش‌نویس یا از پارامتر آدرس --- */
+    /* --- بازیابی وضعیت ---
+       پیش‌نویس فقط وقتی استفاده می‌شود که کاربر از صفحه‌ی ورود برگشته
+       باشد (?resume=1). ورود تازه به این صفحه همیشه باید از «انتخاب
+       خدمت» شروع شود؛ چون پرش ناخواسته به مرحله‌ی بعد برای کاربر گیج‌کننده
+       است و گاهی باعث می‌شد با یک خدمتِ تصادفی وارد مرحله‌ی تأیید شود. */
     var resume = u.param('resume') === '1';
-    var draft = loadDraft();
     var urlService = u.param('service');
 
-    if (draft && (resume || !urlService)) {
-      state.serviceId = draft.serviceId;
-      state.variantId = draft.variantId;
-      state.date = draft.date;
-      state.time = draft.time;
-      state.note = draft.note || '';
-    }
-    if (urlService && ZZ.services.getById(urlService) && !resume) {
-      if (state.serviceId !== urlService) {
-        state.serviceId = urlService;
-        state.variantId = null;
-        state.date = null;
-        state.time = null;
+    if (resume) {
+      var draft = loadDraft();
+      if (draft) {
+        state.serviceId = draft.serviceId;
+        state.variantId = draft.variantId;
+        state.date = draft.date;
+        state.time = draft.time;
+        state.note = draft.note || '';
       }
+    } else {
+      clearDraft();
+    }
+
+    /* فقط خودِ خدمتِ از قبل انتخاب‌شده را نگه می‌داریم؛ حتی اگر از
+       صفحه‌ی خدمت آمده باشید، جریان از مرحله‌ی «انتخاب خدمت» شروع
+       می‌شود تا همیشه واضح باشد چه چیزی را انتخاب کرده‌اید. */
+    if (urlService && ZZ.services.getById(urlService)) {
+      state.serviceId = urlService;
+      state.variantId = null;
+      state.date = null;
+      state.time = null;
     }
 
     /* --- گام ۱ --- */
@@ -415,9 +425,11 @@
     });
     u.$('#confirmBtn').addEventListener('click', submit);
 
-    /* --- پرش به مرحله‌ی درست --- */
+    /* --- پرش به مرحله‌ی درست ---
+       فقط بعد از برگشت واقعی از صفحه‌ی ورود (?resume=1) به مرحله‌ی
+       بعد می‌پریم. در حالت عادی همیشه از «انتخاب خدمت» شروع می‌شود. */
     var target = 0;
-    if (state.serviceId && state.variantId) {
+    if (resume && state.serviceId && state.variantId) {
       target = 1;
       renderDays();
       renderSlots();
