@@ -4,6 +4,7 @@ dist/
 
 # استثنا: نسخه‌ی نهایی بسته که برای دانلود روی گیت‌هاب نگه داشته می‌شود
 !deploy/zohrezare-cpanel.zip
+!deploy/zz-api-patch.zip
 
 # سیستم‌عامل / ویرایشگر
 .DS_Store
