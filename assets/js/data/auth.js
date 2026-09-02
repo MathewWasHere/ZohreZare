@@ -165,12 +165,24 @@
 
     /* ---------------- نشست ---------------- */
 
-    /** کاربر فعلی یا null */
+    /**
+     * کاربر فعلی یا null.
+     *
+     * در حالت بک‌اند، لاگینِ واقعی با کوکی سرویس کار می‌کند و کاربرِ
+     * فعلی در کلید apiUser نگه داشته می‌شود. اگر برای یک لحظه نشستِ
+     * بک‌اند پچ نشده باشد (مثلاً بررسی سلامت سرور کمی طول بکشد یا
+     * یکی از صفحه‌ها زودتر از موعد اجرا شود)، نباید کاربر بیهوده
+     * از حساب بیرون بیفتد. پس به «apiUser» هم به‌عنوان کش محلی نگاه
+     * می‌کنیم. اگر سرور بعداً کوکی را قبول نکند، خودش با ۴۰۱ آن را
+     * پاک می‌کند.
+     */
     currentUser: function () {
       var s = store.get(K_SESSION, null);
-      if (!s || !s.userId) return null;
-      var users = allUsers();
-      return users[s.userId] || null;
+      if (s && s.userId) {
+        var users = allUsers();
+        if (users[s.userId]) return users[s.userId];
+      }
+      return store.get('apiUser', null) || null;
     },
 
     isLoggedIn: function () { return !!auth.currentUser(); },
@@ -202,6 +214,7 @@
     logout: function () {
       store.remove(K_SESSION);
       store.remove(K_PENDING);
+      store.remove('apiUser');
     },
 
     /**

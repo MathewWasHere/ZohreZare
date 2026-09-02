@@ -32,6 +32,9 @@
     selectedDay: null,
     services: null,        // کش خدمات برای تب ویرایش
     editingId: null,       // خدمتی که باز است
+    /* شماره‌ی بخش‌هایی از ویرایشگر خدمت که کاربر بسته است.
+       کلید: serviceId + ':' + شماره‌ی بخش. پیش‌فرض همه بازند. */
+    collapsedSections: {},
     cache: {}              // کش داده‌های سرور
   };
 
@@ -497,14 +500,20 @@
   /* ---------------- تب مدیریت خدمات ---------------- */
 
   /** بسته‌بندی هر بخش از ویرایشگر خدمت */
-  function svcSection(num, title, desc, inner) {
-    return '<section class="svc-section">' +
-      '<header class="svc-section__head">' +
+  function svcSection(num, title, desc, inner, open) {
+    var isOpen = open !== false;
+    return '<section class="svc-section' + (isOpen ? ' is-open' : '') + '" data-svc-section="' + num + '">' +
+      '<header class="svc-section__head" role="button" tabindex="0" ' +
+        'aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
+        'data-svc-toggle="' + num + '">' +
         '<span class="svc-section__num">' + u.toFa(num) + '</span>' +
-        '<div>' +
+        '<div class="svc-section__txt">' +
           '<h3 class="svc-section__title">' + u.esc(title) + '</h3>' +
           (desc ? '<p class="svc-section__desc">' + u.esc(desc) + '</p>' : '') +
         '</div>' +
+        '<span class="svc-section__chev" aria-hidden="true">' +
+          ZZ.icon('chevronDown', null, 18) +
+        '</span>' +
       '</header>' +
       '<div class="svc-section__body">' + inner + '</div>' +
     '</section>';
@@ -601,11 +610,13 @@
               '<span>لینک اینستاگرام (اختیاری)</span>' +
               '<input class="input ltr" type="url" data-s="ig_link" ' +
                 'placeholder="https://instagram.com/…" value="' + u.esc(s.ig_link || '') + '">' +
-            '</label>'
+            '</label>',
+            !state.collapsedSections[s.id + ':1']
           ) +
 
           svcSection(2, 'گزینه‌ها و قیمت‌ها', 'هر گزینه، قیمت و مدت مخصوص خودش را دارد.', 
-            '<div class="svc-vars">' + rows + '</div>'
+            '<div class="svc-vars">' + rows + '</div>',
+            state.collapsedSections[s.id + ':2'] !== true
           ) +
 
           svcSection(3, 'محتوای صفحه‌ی خدمت', 'این بخش همان چیزی است که مشتری در صفحه‌ی جزئیات می‌بیند.',
@@ -630,7 +641,8 @@
               '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
               '<p class="svc-hint">پرسش‌ها برای مشتری بالای صفحه‌ی خدمت نمایش داده می‌شوند.</p>' +
               faqEditor(s.faq || []) +
-            '</div>'
+            '</div>',
+            state.collapsedSections[s.id + ':3'] !== true
           ) +
 
           '<div class="svc-editor__actions">' +
@@ -984,6 +996,22 @@
         return;
       }
 
+      /* باز/بسته کردن بخش‌های شماره‌دار ویرایشگر خدمت */
+      var secToggle = e.target.closest('[data-svc-toggle]');
+      if (secToggle) {
+        var section = secToggle.closest('.svc-section');
+        if (section) {
+          var isOpen = section.classList.toggle('is-open');
+          section.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          var card2 = section.closest('.svc-card');
+          var sid2 = card2 ? parseInt(card2.dataset.svc, 10) : null;
+          if (sid2 != null && secToggle.dataset.svcToggle) {
+            state.collapsedSections[sid2 + ':' + secToggle.dataset.svcToggle] = !isOpen;
+          }
+        }
+        return;
+      }
+
       /* باز/بسته کردن کارت خدمت */
       var toggle = e.target.closest('[data-toggle]');
       if (toggle) {
@@ -1074,6 +1102,15 @@
         ZZ.auth.logout();
         global.location.href = B + 'index.html';
       }
+    });
+
+    /* صفحه‌کلید برای سربرگ‌های قابل‌باز/بسته‌شدن بخش خدمات */
+    root.addEventListener('keydown', function (e) {
+      var secToggle = e.target.closest && e.target.closest('[data-svc-toggle]');
+      if (!secToggle || e.target !== secToggle) return;
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      e.preventDefault();
+      secToggle.click();
     });
 
     /* ورودی‌ها — واگذارشده (delegated)، چون خودِ فیلدها با هر render

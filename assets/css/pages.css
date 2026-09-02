@@ -3007,6 +3007,16 @@
   padding: var(--sp-4);
   background: var(--cream-50);
   border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--dur) var(--ease);
+}
+.svc-section__head:hover {
+  background: var(--blush-100);
+}
+.svc-section__txt {
+  flex: 1;
+  min-width: 0;
 }
 .svc-section__num {
   flex: 0 0 auto;
@@ -3031,6 +3041,30 @@
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.7;
+}
+.svc-section__chev {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+.svc-section__chev svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur) var(--ease);
+}
+.svc-section.is-open .svc-section__chev svg {
+  transform: rotate(180deg);
+}
+.svc-section:not(.is-open) .svc-section__head {
+  border-bottom-color: transparent;
+}
+.svc-section:not(.is-open) .svc-section__body {
+  display: none;
 }
 .svc-section__body {
   padding: var(--sp-4);

@@ -200,15 +200,7 @@
   }
 
   /* ---------------- راه‌اندازی ---------------- */
-  document.addEventListener('DOMContentLoaded', function () {
-    ZZ.shell({ active: 'account' });
-
-    /* اگر از قبل وارد شده، مستقیم برو */
-    if (ZZ.auth.isLoggedIn()) {
-      global.location.replace(nextUrl());
-      return;
-    }
-
+  function initAuthPage() {
     u.$('#doneIcon').innerHTML = ZZ.icon('checkCircle', null, 38);
     u.$('#phoneIcon').innerHTML = ZZ.icon('phone', null, 26);
 
@@ -272,10 +264,18 @@
           btn.classList.remove('is-loading');
           clearInterval(state.timer);
 
+          /* کاربر قبلی که نامش را قبلاً وارد کرده، دیگر نباید هر بار
+             دوباره نام و تاریخ تولد بدهد — مستقیم به پنلش برمی‌گردیم. */
+          if (!res.isNewUser && res.user && res.user.name) {
+            ZZ.toast.ok('خوش برگشتید');
+            global.location.href = nextUrl();
+            return;
+          }
+
           u.$('#doneTitle').textContent = res.isNewUser ? 'حسابتان ساخته شد' : 'خوش برگشتید';
           u.$('#doneText').textContent = res.isNewUser
             ? 'از این به بعد فقط با همین شماره وارد می‌شوید. حالا می‌توانید نوبت رزرو کنید.'
-            : 'وارد حسابتان شدید. نوبت‌های قبلی‌تان در صفحه‌ی حساب کاربری در دسترس است.';
+            : 'برای تکمیل حساب، نام‌تان را وارد کنید.';
 
           u.$('#nameInput').value = res.user.name || '';
 
@@ -341,6 +341,32 @@
         go();
       }
     });
+  }
+
+  /* ---------------- شروع --------------------------------
+     اول منتظر می‌مانیم بک‌اند بررسی کند و نشست را همگام کند؛
+     وگرنه کاربری که از قبل وارد شده، ممکن است در یک لحظه کوتاه
+     «واردنشده» دیده شود و بیهوده به صفحه‌ی ورود برود.
+     ---------------------------------------------------- */
+  document.addEventListener('DOMContentLoaded', function () {
+    var boot = function () {
+      ZZ.shell({ active: 'account' });
+
+      /* اگر از قبل وارد شده (چه با حالت محلی و چه بک‌اند)،
+         مستقیم به مقصد برو */
+      if (ZZ.auth.isLoggedIn()) {
+        global.location.replace(nextUrl());
+        return;
+      }
+
+      initAuthPage();
+    };
+
+    if (ZZ.ready && typeof ZZ.ready.then === 'function') {
+      ZZ.ready.then(boot).catch(boot);
+    } else {
+      boot();
+    }
   });
 
   /* ---------------- سلکت‌های تاریخ تولد ---------------- */

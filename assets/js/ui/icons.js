@@ -32,6 +32,14 @@
     clock: '<circle cx="12" cy="12" r="9" ' + P + '/><path d="M12 7.5V12l3 1.8" ' + P + '/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2.5" ' + P + '/>' +
               '<path d="M3 10h18M8 3v4M16 3v4" ' + P + '/>',
+    calendarDays: '<rect x="3" y="5" width="18" height="16" rx="2.5" ' + P + '/>' +
+                  '<path d="M3 10h18M8 3v4M16 3v4" ' + P + '/>' +
+                  '<circle cx="8.2" cy="13.7" r="0.9" fill="currentColor" stroke="none"/>' +
+                  '<circle cx="12" cy="13.7" r="0.9" fill="currentColor" stroke="none"/>' +
+                  '<circle cx="15.8" cy="13.7" r="0.9" fill="currentColor" stroke="none"/>' +
+                  '<circle cx="8.2" cy="17.4" r="0.9" fill="currentColor" stroke="none"/>' +
+                  '<circle cx="12" cy="17.4" r="0.9" fill="currentColor" stroke="none"/>' +
+                  '<circle cx="15.8" cy="17.4" r="0.9" fill="currentColor" stroke="none"/>',
     tag:   '<path d="M3 12.4V4.6A1.6 1.6 0 0 1 4.6 3h7.8a1.6 1.6 0 0 1 1.1.5l7 7a1.6 1.6 0 0 1 0 2.3l-7.6 7.6a1.6 1.6 0 0 1-2.3 0l-7-7a1.6 1.6 0 0 1-.6-1z" ' + P + '/>' +
            '<circle cx="7.6" cy="7.6" r="1.2" ' + P + '/>',
     user:  '<circle cx="12" cy="8" r="3.8" ' + P + '/><path d="M4.5 20.2a7.7 7.7 0 0 1 15 0" ' + P + '/>',
@@ -45,6 +53,7 @@
     arrowLeft:  '<path d="M19 12H5M11 6l-6 6 6 6" ' + P + '/>',
     arrowRight: '<path d="M5 12h14M13 6l6 6-6 6" ' + P + '/>',
     chevronLeft: '<path d="M15 5l-7 7 7 7" ' + P + '/>',
+    chevronDown: '<path d="m5 9 7 7 7-7" ' + P + '/>',
     sparkle: '<path d="M12 3.2 13.6 9 19.4 10.6 13.6 12.2 12 18 10.4 12.2 4.6 10.6 10.4 9z" ' + P + '/>' +
              '<path d="M18.6 16.2 19.3 18.5 21.6 19.2 19.3 19.9 18.6 22.2 17.9 19.9 15.6 19.2 17.9 18.5z" ' + P + '/>',
     shield: '<path d="M12 3 5 6v6c0 4.3 3 7.7 7 9 4-1.3 7-4.7 7-9V6z" ' + P + '/><path d="m9.2 12 2 2 3.6-4" ' + P + '/>',

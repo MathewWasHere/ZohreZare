@@ -102,6 +102,21 @@
   function patchAuth() {
     var store = ZZ.store;
 
+    /**
+     * هویت کاربر را هم در کش بک‌اند (apiUser) و هم در لایه‌ی محلی
+     * (session/users) می‌نویسیم. این‌طور اگر صفحه‌ای قبل از اتمام
+     * همگام‌سازی اجرا شود یا نشستِ بک‌اند موقتاً در دسترس نباشد،
+     * کاربر روی صفحه‌ی پنل از حساب بیرون نمی‌افتد.
+     */
+    function rememberLocal(user) {
+      if (!user) return;
+      store.set(K_USER, user);
+      store.set('session', { userId: user.id, phone: user.phone, at: Date.now() });
+      var users = store.get('users', {}) || {};
+      users[user.id] = user;
+      store.set('users', users);
+    }
+
     ZZ.auth.requestCode = function (rawPhone) {
       return ZZ.api.auth.requestCode(rawPhone).then(function (r) {
         pendingPhone = r.phone;
@@ -123,22 +138,33 @@
       }
       return ZZ.api.auth.verify(phone, rawCode).then(function (r) {
         var user = mapUser(r.user);
-        store.set(K_USER, user);
+        rememberLocal(user);
         pendingPhone = null;
         return { user: user, isNewUser: r.is_new_user };
       });
     };
 
     ZZ.auth.currentUser = function () {
-      return store.get(K_USER, null);
+      var user = store.get(K_USER, null);
+      if (user) return user;
+
+      /* اگر کش بک‌اند برای لحظه‌ای خالی بود، از نشست محلی بخوان.
+         معمولاً در شروع صفحه، apiUser هنوز ساخته نشده، ولی session
+         از لاگین قبلی باقی است. */
+      var s = store.get('session', null);
+      if (s && s.userId) {
+        var users = store.get('users', {}) || {};
+        return users[s.userId] || null;
+      }
+      return null;
     };
 
     ZZ.auth.isLoggedIn = function () {
-      return !!store.get(K_USER, null);
+      return !!ZZ.auth.currentUser();
     };
 
     ZZ.auth.isAdmin = function () {
-      var user = store.get(K_USER, null);
+      var user = ZZ.auth.currentUser();
       return !!(user && user.role === 'admin');
     };
 
@@ -150,13 +176,16 @@
 
       return ZZ.api.auth.updateProfile(body).then(function (r) {
         var user = mapUser(r);
-        store.set(K_USER, user);
+        rememberLocal(user);
         return user;
       });
     };
 
     ZZ.auth.logout = function () {
       store.remove(K_USER);
+      store.remove('session');
+      store.remove('users');
+      store.remove('pending');
       pendingPhone = null;
       return ZZ.api.auth.logout().catch(function () { /* مهم نیست */ });
     };
@@ -165,17 +194,23 @@
 
     /**
      * همگام‌سازی با سرور.
-     * اگر کوکی منقضی شده باشد، کش پاک می‌شود.
+     *
+     * اگر سرور در دسترس باشد، آخرین اطلاعات کاربر را می‌گیریم و
+     * کش را تازه می‌کنیم. اگر جواب ۴۰۱ بدهد (کوکی منقضی شده یا به
+     * هر دلیلی نرسیده)، کاربر را فوراً بیرون نمی‌اندازیم؛ چون نشستِ
+     * قبلی کاربر در localStorage هست و این‌طوری هیچ رفرشی او را به
+     * صفحه‌ی ورود نمی‌برد. درخواست‌های حفاظت‌شده که با ۴۰۱ شکست
+     * بخورند، خودشان خطا را نشان می‌دهند.
      */
     ZZ.auth.sync = function () {
       return ZZ.api.auth.me()
         .then(function (r) {
           var user = mapUser(r);
-          store.set(K_USER, user);
+          rememberLocal(user);
           return user;
         })
         .catch(function (err) {
-          if (err.status === 401) store.remove(K_USER);
+          /* نکته: عمداً K_USER را در خطای ۴۰۱ پاک نمی‌کنیم. */
           return null;
         });
     };
