@@ -108,24 +108,74 @@ if ($senders['ok'] && !empty($smsCfg['from'])) {
     );
 }
 
-/* ---------------- ۴) بررسی متن الگو ----------------
-   نکته: template() متن را از روی قالبِ نام‌گذاری‌شده می‌سازد.
-   render() متنِ آماده می‌گیرد، نه نام قالب. */
-$preview = $sms->template('otp', ['code' => '1234']);
-$rows[] = row(
-    'متن کد تأیید',
-    $preview !== null,
-    $preview !== null ? $preview : 'قالب otp در config خالی است'
-);
+/* ---------------- ۴) بررسی متن قالب‌ها ----------------
+   template() متن را از روی قالبِ نام‌گذاری‌شده می‌سازد؛ اگر قالب در
+   config خالی باشد null برمی‌گرداند — یعنی آن پیامک فعلاً فرستاده
+   نمی‌شود. این بخش فقط پیش‌نمایش می‌دهد، پیامکی نمی‌فرستد. */
+function tplSampleVars(): array
+{
+    return [
+        'code'    => '1234',
+        'date'    => 'چهارشنبه ۲۹ اردیبهشت',
+        'time'    => '۱۶:۳۰',
+        'service' => 'خط چشم دائم و میکروبلیدینگ',
+        'reason'  => 'در آن ساعت نوبت دیگری ثبت شده بود',
+        'name'    => 'فاطمه محمدی نژاد',
+        'phone'   => '۰۹۱۲۱۲۳۴۵۶۷',
+    ];
+}
 
-/* ---------------- ۵) ارسال واقعی ---------------- */
+$tplNames = [
+    'otp'         => 'کد تأیید (otp)',
+    'received'    => 'رسید ثبت درخواست (received)',
+    'approved'    => 'تأیید نوبت (approved)',
+    'rejected'    => 'رد نوبت (rejected)',
+    'reminder'    => 'یادآوری (reminder)',
+    'admin_alert' => 'خبر به سالن (admin_alert)',
+];
+$sampleVars = tplSampleVars();
+foreach ($tplNames as $key => $label) {
+    $tpl = $sms->template($key, $sampleVars);
+    $rows[] = row(
+        'قالب ' . $label,
+        $tpl !== null,
+        $tpl !== null ? $tpl : 'خالی است — این پیامک فرستاده نمی‌شود'
+    );
+}
+
+/* ---------------- ۵) ارسال واقعی یک قالب ---------------- */
 $sendResult = null;
+$sendCall   = [];
 $testPhone  = trim((string) ($_GET['to'] ?? ''));
+$testTpl    = (string) ($_GET['tpl'] ?? 'otp');
+if (!isset($tplNames[$testTpl])) {
+    $testTpl = 'otp';
+}
+
 if ($testPhone !== '') {
-    $otp        = (string) random_int(1000, 9999);
-    $sendResult = $sms->sendOtp($testPhone, $otp);
-    $sendCall   = $sms->lastCall();
-    $sendResult['code_sent'] = $otp;
+    if ($testTpl === 'otp') {
+        $otp        = (string) random_int(1000, 9999);
+        $sendResult = $sms->sendOtp($testPhone, $otp);
+        $sendCall   = $sms->lastCall();
+        $sendResult['code_sent'] = $otp;
+    } else {
+        $text = $sms->template($testTpl, $sampleVars);
+        if ($text === null) {
+            $sendResult = [
+                'ok'      => false,
+                'code'    => 17,
+                'message' => 'قالب «' . $testTpl . '» در config خالی است.',
+                'id'      => null,
+            ];
+        } else {
+            $sendResult = $sms->send($testPhone, $text, $testTpl);
+            $sendCall   = $sms->lastCall();
+        }
+    }
+    $sendResult['sent_tpl']    = $testTpl;
+    $sendResult['text_sample'] = $sendResult['ok'] || (int) $sendResult['code'] !== 17
+        ? ($sms->template($testTpl, $sampleVars) ?? '')
+        : '';
 }
 
 /* ---------------- ۶) آزمایش حالت‌های اتصال ----------------
@@ -283,27 +333,39 @@ function rawBox(array $call): string
 
 <form method="get">
   <input type="hidden" name="key" value="<?= htmlspecialchars($guard) ?>">
+  <label>
+    قالب:
+    <select name="tpl">
+      <?php foreach ($tplNames as $key => $label): ?>
+        <option value="<?= htmlspecialchars($key) ?>"<?= $testTpl === $key ? ' selected' : '' ?>>
+          <?= htmlspecialchars($label) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </label>
   <input type="text" name="to" placeholder="09123456789"
          value="<?= htmlspecialchars($testPhone) ?>" required>
-  <button type="submit">ارسال کد آزمایشی</button>
+  <button type="submit">ارسال تستی این قالب</button>
 </form>
 
 <?php if ($sendResult !== null): ?>
   <div class="box <?= $sendResult['ok'] ? 'box--ok' : 'box--no' ?>">
     <strong><?= $sendResult['ok'] ? '✓ ارسال موفق' : '✗ ارسال ناموفق' ?></strong><br>
+    قالب: <code><?= htmlspecialchars((string) $sendResult['sent_tpl']) ?></code><br>
     کد نتیجه: <code><?= (int) $sendResult['code'] ?></code><br>
     پیام: <?= htmlspecialchars((string) $sendResult['message']) ?><br>
     <?php if ($sendResult['ok'] && empty($sendResult['skipped'])): ?>
-      کد فرستاده‌شده: <code><?= htmlspecialchars((string) $sendResult['code_sent']) ?></code>
-      — باید همین عدد به گوشی برسد.
+      متن ارسال‌شده:
+      <code style="white-space:pre-wrap"><?= htmlspecialchars((string) $sendResult['text_sample']) ?></code>
     <?php endif; ?>
     <?php if ((int) $sendResult['code'] === 18): ?>
-      <br><br><strong>یعنی متن با الگو نمی‌خواند.</strong> متن قالب
-      <code>otp</code> در <code>api/config.php</code> باید دقیقاً همان چیزی
-      باشد که در پنل تأیید شده — حتی فاصله‌ها و دو‌نقطه.
+      <br><br><strong>یعنی متن با الگوی تأییدشده نمی‌خواند.</strong>
+      متن قالب <code><?= htmlspecialchars((string) $sendResult['sent_tpl']) ?></code>
+      در <code>api/config.php</code> باید کاراکتر‌به‌کاراکتر همان چیزی باشد
+      که در پنل تأیید شده — حتی فاصله‌ها، خط جدید و دو‌نقطه.
     <?php endif; ?>
   </div>
-  <?php if (!$sendResult['ok'] && isset($sendCall)): ?>
+  <?php if (!$sendResult['ok'] && !empty($sendCall)): ?>
     <h2>پاسخ خام — ارسال</h2>
     <?= rawBox($sendCall) ?>
   <?php endif; ?>
