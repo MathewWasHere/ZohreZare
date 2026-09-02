@@ -188,6 +188,16 @@ function ok(cond, name) {
   ok($('#summaryBox').textContent.indexOf('خدمت') > -1, 'خلاصه‌ی نوبت رندر شد');
   ok($('#authNotice').textContent.indexOf('بدون ترک این صفحه') > -1, 'راهنمای ورودِ در همان صفحه هست');
 
+  /* ---------- دوبار کلیک روی ثبت: فقط یک پنجره‌ی ورود، فقط یک ثبت ---------- */
+  $('#ctaBtn').click();
+  $('#ctaBtn').click();   /* کلیک دوم وقتی اولی هنوز تمام نشده */
+  await sleep(30);
+  ok(win.document.querySelectorAll('[data-zz-dialog]').length === 1,
+     'دوبار کلیک فقط یک پنجره‌ی ورود باز می‌کند');
+  win.document.querySelector('[data-zz-dialog]').querySelector('[data-close]').click();
+  await sleep(30);
+  ok(win.document.querySelector('[data-zz-dialog]') == null, 'پنجره بسته شد و قفل دکمه باز شد');
+
   /* ---------- انصراف از ورود: باید در همان گام بمانیم ---------- */
   $('#ctaBtn').click();   /* کاربر وارد نشده → پنجره‌ی ورود */
   await sleep(30);
@@ -230,6 +240,8 @@ function ok(cond, name) {
   /* ---------- صفحه‌ی موفقیت ---------- */
   ok($('#panelDone').classList.contains('is-active'), 'صفحه‌ی موفقیت باز شد');
   ok($('#bookCta').hidden === true, 'نوار چسبان در صفحه‌ی موفقیت مخفی شد');
+  ok(read('assets/css/base.css').indexOf('[hidden] { display: none !important; }') > -1,
+     'قانون سراسری [hidden] در base.css هست (در مرورگر واقعی هم غیب می‌شود، نه فقط attribute)');
   const details = $('#doneDetails').textContent;
   ok(details.indexOf('کد پیگیری') > -1, 'کد پیگیری نمایش داده شد');
   ok(details.indexOf('آدرس سالن') > -1, 'آدرس سالن نمایش داده شد');

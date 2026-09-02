@@ -119,6 +119,12 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+/* ویژگی hidden باید همیشه عنصر را غیب کند؛ بدون !important هر قانونِ
+   display (مثل .book-cta با display:flex) آن را خنثی می‌کند و عنصرِ
+   «مخفی» دیده می‌شود و کلیک هم می‌خورد — اتفاقی که روی صفحه‌ی موفقیتِ
+   رزرو برای نوار چسبان افتاد. */
+[hidden] { display: none !important; }
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;

@@ -750,7 +750,6 @@
   border-top: 1px dashed var(--line);
   background: var(--cream-50);
 }
-.svc-choice__body[hidden] { display: none; }
 .svc-choice__lbl {
   margin: var(--sp-3) 0 var(--sp-2);
   font-size: var(--fs-xs);
@@ -3807,7 +3806,6 @@ a.admin-slot {
 .skel--day { height: 46px; border-radius: var(--r-md); }
 
 /* ---------- پنل‌ها (tab) ---------- */
-.admin-panel[hidden] { display: none; }
 
 /* ---------- موبایل پنل ---------- */
 @media (max-width: 640px) {

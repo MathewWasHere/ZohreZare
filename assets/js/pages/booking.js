@@ -646,20 +646,30 @@
   }
 
   /* ---------------- ثبت نهایی ---------------- */
+  /* دوبار کلیک (یا کلیک وقتی پنجره‌ی ورود باز است) نباید دوبار
+     ثبت کند؛ تا وقتی نتیجه معلوم نشده دکمه قفل است */
+  var submitting = false;
+
   function submit() {
     var btn = u.$('#ctaBtn');
 
     /* اگر وارد نشده: ورود در همان صفحه (پنجره‌ی شماره و کد)؛
        پیش‌نویس هم ذخیره می‌شود تا اگر اتفاقی افتاد، همه‌چیز در امان باشد */
     if (!ZZ.auth.isLoggedIn()) {
+      if (submitting) return;
+      submitting = true;
       saveDraft();
       openLoginDialog().then(function (ok) {
+        submitting = false;
         if (!ok) return;
         renderConfirm();   /* اطلاعِ «وارد شدید» تازه شود */
         submit();          /* و ثبت، همان‌جا ادامه پیدا کند */
       });
       return;
     }
+
+    if (submitting) return;
+    submitting = true;
 
     btn.classList.add('is-loading');
 
@@ -693,6 +703,7 @@
         ZZ.toast.ok(pending ? 'درخواست شما ثبت شد' : 'نوبت شما با موفقیت ثبت شد');
       })
       .catch(function (err) {
+        submitting = false;
         btn.classList.remove('is-loading');
         ZZ.toast.error(err.message);
         /* اگر بازه پر شده بود، برگرد به انتخاب زمان */
