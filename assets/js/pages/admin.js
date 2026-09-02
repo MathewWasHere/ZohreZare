@@ -52,10 +52,11 @@
     selectedDay: null,
     calIndex: 0,           // کدام ماهِ تقویم باز است
     services: null,        // کش خدمات برای تب ویرایش
-    editingId: null,       // خدمتی که باز است
-    /* شماره‌ی بخش‌هایی از ویرایشگر خدمت که کاربر بسته است.
-       کلید: serviceId + ':' + شماره‌ی بخش. پیش‌فرض همه بازند. */
-    collapsedSections: {},
+    editingId: null,       // خدمتی که ویرایشگرش باز است
+    /* dirty یعنی کاربر در ویرایشگر چیزی تغییر داده که هنوز ذخیره
+       نشده — تا وقتی true است هیچ رندر مجددی فرم او را بازنویسی
+       نمی‌کند و خروج از تب/ویرایشگر اول تأیید می‌گیرد. */
+    dirty: false,
     cache: {}              // کش داده‌های سرور
   };
 
@@ -82,12 +83,13 @@
         res.then(function (v) {
           state.cache[key] = v;
           loading[key] = false;
-          render();
+          /* safeRender تا ویرایشگر خدمتِ در حال تایپ از بین نرود */
+          safeRender();
         }).catch(function (err) {
           state.cache[key] = fallback;
           loading[key] = false;
           ZZ.toast.error((err && err.message) || 'دریافت اطلاعات از سرور ناموفق بود.');
-          render();
+          safeRender();
         });
       } else {
         state.cache[key] = res;
@@ -721,50 +723,62 @@
     '</div>';
   }
 
-  /* ---------------- تب مدیریت خدمات ---------------- */
+  /* ---------------- تب مدیریت خدمات ----------------
+     دو نما:
+       ۱) فهرست خدمت‌ها (کارت‌های ساده + دکمه‌ی «مشاهده‌ی صفحه»)
+       ۲) ویرایشگر تمام‌صفحه‌ی یک خدمت — همه‌ی گزینه‌ها همیشه باز،
+          فقط اسکرول عمودی، بدون آکاردئون تو‌درتو.
+     هدف UX: مدیر موبایلی نباید هیچ‌وقت دنبال گزینه‌ی پنهان‌شده
+     بگردد یا افقی اسکرول کند. */
 
-  /** بسته‌بندی هر بخش از ویرایشگر خدمت */
-  function svcSection(num, title, desc, inner, open) {
-    var isOpen = open !== false;
-    return '<section class="svc-section' + (isOpen ? ' is-open' : '') + '" data-svc-section="' + num + '">' +
-      '<header class="svc-section__head" role="button" tabindex="0" ' +
-        'aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
-        'data-svc-toggle="' + num + '">' +
-        '<span class="svc-section__num">' + u.toFa(num) + '</span>' +
-        '<div class="svc-section__txt">' +
-          '<h3 class="svc-section__title">' + u.esc(title) + '</h3>' +
-          (desc ? '<p class="svc-section__desc">' + u.esc(desc) + '</p>' : '') +
+  /** کارت گروه در ویرایشگر — برخلاف قبل، همیشه باز است */
+  function svcGroup(icon, title, hint, inner) {
+    return '<section class="svc-group">' +
+      '<header class="svc-group__head">' +
+        '<span class="svc-group__ico">' + ZZ.icon(icon, null, 17) + '</span>' +
+        '<div class="svc-group__txt">' +
+          '<h3 class="svc-group__title">' + u.esc(title) + '</h3>' +
+          (hint ? '<p class="svc-group__hint">' + u.esc(hint) + '</p>' : '') +
         '</div>' +
-        '<span class="svc-section__chev" aria-hidden="true">' +
-          ZZ.icon('chevronDown', null, 18) +
-        '</span>' +
       '</header>' +
-      '<div class="svc-section__body">' + inner + '</div>' +
+      '<div class="svc-group__body">' + inner + '</div>' +
     '</section>';
   }
 
-  function renderServices() {
-    if (!state.services) {
-      /* هنوز نیامده — در پس‌زمینه بگیر */
-      if (ZZ.appointments.admin.services) {
-        ZZ.appointments.admin.services().then(function (rows) {
-          state.services = rows;
-          render();
-        }).catch(function (err) {
-          state.services = [];
-          ZZ.toast.error(err.message || 'خدمات بارگذاری نشد.');
-          render();
-        });
-      } else {
-        state.services = [];
-      }
-      return '<div class="svc-editor" aria-busy="true">' +
-        '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
-        '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
-      '</div>';
-    }
+  /** کاتالوگ محلی (حالت نمایشی بدون سرور) → قالب ویرایشگر، تا کل
+      تجربه‌ی ویرایش بدون PHP هم قابل مشاهده و ارزیابی باشد */
+  function localServiceRows() {
+    return ZZ.services.getAll().map(function (s) {
+      return {
+        id: s.id,
+        slug: s.slug,
+        title: s.title,
+        short: s.short || '',
+        icon: s.icon,
+        ig_link: '',
+        is_active: 1,
+        price_from: s.priceFrom || 0,
+        variants: (s.variants || []).map(function (v) {
+          return {
+            id: v.id,
+            name: v.name,
+            note: v.note || '',
+            duration_min: v.durationMin,
+            price: v.price
+          };
+        }),
+        description: s.description || [],
+        includes: s.includes || [],
+        aftercare: s.aftercare || [],
+        good_for: s.goodFor || [],
+        faq: s.faq || []
+      };
+    });
+  }
 
-    if (!state.services.length) {
+  /** نمای فهرست — یک کارت در هر خدمت، ضربه = ویرایش */
+  function servicesListHTML(list) {
+    if (!list.length) {
       return '<div class="empty">' +
                '<div class="empty__icon">' + ZZ.icon('tag', null, 56) + '</div>' +
                '<h3>خدمتی پیدا نشد</h3>' +
@@ -772,122 +786,212 @@
              '</div>';
     }
 
-    return '<div class="svc-editor">' + state.services.map(function (s) {
-      var open = state.editingId === s.id;
+    return '<div class="svc-items">' + list.map(function (s) {
+      var prices = s.variants.map(function (v) { return v.price; });
+      var minPrice = prices.length ? Math.min.apply(null, prices) : (s.price_from || 0);
+      var off = s.is_active === 0;
 
-      var rows = s.variants.map(function (v, i) {
-        return '<div class="svc-var' + (v.is_active ? '' : ' is-off') + '" data-vi="' + i + '">' +
-          '<div class="svc-var__grid">' +
-            '<label class="svc-field svc-field--name">' +
-              '<span>نام گزینه</span>' +
-              '<input class="input" type="text" data-f="name" value="' + u.esc(v.name) + '">' +
-            '</label>' +
-            '<label class="svc-field">' +
-              '<span>قیمت — تومان</span>' +
-              '<input class="input ltr" type="number" min="0" step="50000" ' +
-                'data-f="price" value="' + v.price + '">' +
-            '</label>' +
-            '<label class="svc-field">' +
-              '<span>مدت (دقیقه)</span>' +
-              '<input class="input ltr" type="number" min="5" step="15" ' +
-                'data-f="duration_min" value="' + v.duration_min + '">' +
-            '</label>' +
-          '</div>' +
-          '<label class="svc-field">' +
-            '<span>توضیح کوتاه</span>' +
-            '<input class="input" type="text" data-f="note" value="' + u.esc(v.note || '') + '">' +
-          '</label>' +
-          '<div class="svc-var__foot">' +
-            '<label class="svc-check">' +
-              '<input type="checkbox" data-f="is_active"' + (v.is_active ? ' checked' : '') + '>' +
-              '<span>فعال</span>' +
-            '</label>' +
-            '<span class="svc-var__price">' + u.money(v.price) + ' ' + CUR + '</span>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-
-      return '<article class="svc-card' + (open ? ' is-open' : '') + '" data-svc="' + s.id + '">' +
-        '<button type="button" class="svc-card__head" data-toggle="' + s.id + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
-          '<span class="svc-card__icon">' + ZZ.icon(s.icon || 'sparkle', null, 20) + '</span>' +
-          '<span class="svc-card__info">' +
-            '<span class="svc-card__name">' + u.esc(s.title) + '</span>' +
-            '<span class="svc-card__meta">' +
-              u.toFa(s.variants.length) + ' گزینه · از ' +
-              u.money(Math.min.apply(null, s.variants.map(function (v) { return v.price; }))) +
-              ' ' + CUR +
+      return '<article class="svc-item' + (off ? ' is-off' : '') + '">' +
+        '<button type="button" class="svc-item__main" data-edit="' + u.esc(s.id) + '">' +
+          '<span class="svc-item__icon">' + ZZ.icon(s.icon || 'sparkle', null, 20) + '</span>' +
+          '<span class="svc-item__info">' +
+            '<span class="svc-item__name">' + u.esc(s.title) + '</span>' +
+            '<span class="svc-item__meta">' +
+              u.toFa(s.variants.length) + ' گزینه · از ' + u.money(minPrice) + ' ' + CUR +
             '</span>' +
           '</span>' +
-          (s.is_active ? '' : '<span class="badge badge--muted">غیرفعال</span>') +
-          ZZ.icon('chevronLeft', 'svc-card__arrow', 18) +
+          (off ? '<span class="badge badge--muted">غیرفعال</span>' : '') +
+          ZZ.icon('chevronLeft', 'svc-item__arrow', 18) +
         '</button>' +
-
-        '<div class="svc-card__body"><div class="svc-card__body__inner">' +
-          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، توضیح کوتاه و لینک اینستاگرام.',
-            '<label class="svc-field">' +
-              '<span>نام خدمت</span>' +
-              '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
-            '</label>' +
-            '<label class="svc-field">' +
-              '<span>توضیح کوتاه (زیر عنوان کارت)</span>' +
-              '<textarea class="input" data-s="short" rows="2">' + u.esc(s.short || '') + '</textarea>' +
-            '</label>' +
-            '<label class="svc-field">' +
-              '<span>لینک اینستاگرام (اختیاری)</span>' +
-              '<input class="input ltr" type="url" data-s="ig_link" ' +
-                'placeholder="https://instagram.com/…" value="' + u.esc(s.ig_link || '') + '">' +
-            '</label>',
-            !state.collapsedSections[s.id + ':1']
-          ) +
-
-          svcSection(2, 'گزینه‌ها و قیمت‌ها', 'هر گزینه، قیمت و مدت مخصوص خودش را دارد.',
-            '<div class="svc-vars">' + rows + '</div>',
-            state.collapsedSections[s.id + ':2'] !== true
-          ) +
-
-          svcSection(3, 'محتوای صفحه‌ی خدمت', 'این بخش همان چیزی است که مشتری در صفحه‌ی جزئیات می‌بیند.',
-            '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">تگ‌ها — «مناسب برای»</h4>' +
-              listEditor('good_for', s.good_for || [], 'مثلاً: مژه‌های کم‌پشت', true) +
-            '</div>' +
-            '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">متن معرفی</h4>' +
-              '<p class="svc-hint">هر بند یک پاراگراف جدا در صفحه‌ی خدمت است.</p>' +
-              listEditor('description', s.description || [], 'متن پاراگراف…', false) +
-            '</div>' +
-            '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">این خدمت شامل چه چیزهایی می‌شود</h4>' +
-              listEditor('includes', s.includes || [], 'مثلاً: مشاوره‌ی رایگان', false) +
-            '</div>' +
-            '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">مراقبت‌های بعد از انجام</h4>' +
-              listEditor('aftercare', s.aftercare || [], 'مثلاً: تا ۲۴ ساعت آب نزنید', false) +
-            '</div>' +
-            '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
-              '<p class="svc-hint">پرسش‌ها برای مشتری بالای صفحه‌ی خدمت نمایش داده می‌شوند.</p>' +
-              faqEditor(s.faq || []) +
-            '</div>',
-            state.collapsedSections[s.id + ':3'] !== true
-          ) +
-
-          '<div class="svc-editor__actions">' +
-            '<button class="btn btn--primary btn--sm" data-save="' + s.id + '">' +
-              ZZ.icon('check', null, 16) + 'ذخیره‌ی تغییرات</button>' +
-            '<button class="btn btn--quiet btn--sm" data-cancel-edit="1">انصراف</button>' +
-          '</div>' +
-        '</div></div>' +
+        (s.slug
+          ? '<a class="svc-item__view" href="' + B + 'service.html?s=' + u.esc(s.slug) + '" ' +
+              'target="_blank" rel="noopener" aria-label="مشاهده‌ی صفحه‌ی ' + u.esc(s.title) + '">' +
+              ZZ.icon('eye', null, 16) + '<span>مشاهده‌ی صفحه</span>' +
+            '</a>'
+          : '') +
       '</article>';
     }).join('') + '</div>' +
 
     '<div class="note note--info" style="margin-top:var(--sp-4);">' + ZZ.icon('info') +
-      '<span>تغییر قیمت روی نوبت‌های ثبت‌شده اثر ندارد؛ هر نوبت قیمت زمان رزرو ' +
-      'خودش را نگه می‌دارد.</span></div>';
+      '<span>برای ویرایش، روی خدمت بزنید. «مشاهده‌ی صفحه» همان چیزی را نشان می‌دهد که مشتری می‌بیند.' +
+      ' تغییر قیمت روی نوبت‌های ثبت‌شده اثر ندارد.</span></div>';
+  }
+
+  /** ویرایشگر یک خدمت — همه‌ی گروه‌ها یک‌جا */
+  function serviceEditorHTML(s) {
+    var canSave = typeof A.updateService === 'function';
+    var dirtyCls = state.dirty ? ' is-dirty' : '';
+    var saveDisabled = canSave ? '' : ' disabled title="در حالت نمایشی، ذخیره نیاز به سرور دارد"';
+
+    var variantRows = s.variants.map(function (v, i) {
+      return '<div class="svc-var" data-vi="' + i + '">' +
+        '<div class="svc-var__foot svc-var__foot--top">' +
+          '<span class="svc-var__num">' + u.toFa(i + 1) + '</span>' +
+          '<span class="svc-var__price" data-price-live="' + i + '">' + u.money(v.price) + ' ' + CUR + '</span>' +
+        '</div>' +
+        '<div class="svc-var__grid">' +
+          '<label class="svc-field svc-field--name">' +
+            '<span>نام گزینه</span>' +
+            '<input class="input" type="text" data-f="name" value="' + u.esc(v.name) + '">' +
+          '</label>' +
+          '<label class="svc-field">' +
+            '<span>قیمت — تومان</span>' +
+            '<input class="input ltr" type="number" min="0" step="50000" ' +
+              'data-f="price" value="' + v.price + '">' +
+          '</label>' +
+          '<label class="svc-field">' +
+            '<span>مدت (دقیقه)</span>' +
+            '<input class="input ltr" type="number" min="5" step="15" ' +
+              'data-f="duration_min" value="' + v.duration_min + '">' +
+          '</label>' +
+        '</div>' +
+        '<label class="svc-field">' +
+          '<span>توضیح کوتاه</span>' +
+          '<input class="input" type="text" data-f="note" value="' + u.esc(v.note || '') + '">' +
+        '</label>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="svc-edit" data-svc="' + u.esc(s.id) + '">' +
+
+      /* ---- نوار چسبان: بازگشت + نام زنده + ذخیره ---- */
+      '<div class="svc-edit__bar">' +
+        '<button type="button" class="icon-btn" data-back="1" ' +
+          'aria-label="بازگشت به فهرست خدمات">' +
+          ZZ.icon('chevronRight', null, 18) +
+        '</button>' +
+        '<div class="svc-edit__crumb">' +
+          '<span>ویرایش خدمت</span>' +
+          '<strong id="svcEditTitle">' + u.esc(s.title) + '</strong>' +
+        '</div>' +
+        '<button type="button" class="btn btn--primary btn--sm" data-save="' + u.esc(s.id) + '"' +
+          saveDisabled + dirtyCls + '>' +
+          'ذخیره<span class="dirty-dot" aria-hidden="true"></span>' +
+        '</button>' +
+      '</div>' +
+
+      (canSave ? '' :
+        '<div class="note note--warn">' + ZZ.icon('info') +
+          '<span>حالت نمایشی: همه‌چیز قابل مشاهده است، اما ذخیره‌ی تغییرات به اتصال سرور نیاز دارد.</span>' +
+        '</div>') +
+
+      svcGroup('edit', 'اطلاعات پایه‌ی خدمت',
+        'عنوان و توضیحی که روی کارت خدمت دیده می‌شود.',
+        '<label class="svc-field">' +
+          '<span>نام خدمت</span>' +
+          '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
+        '</label>' +
+        '<label class="svc-field">' +
+          '<span>توضیح کوتاه (زیر عنوان کارت)</span>' +
+          '<textarea class="input" data-s="short" rows="2">' + u.esc(s.short || '') + '</textarea>' +
+        '</label>' +
+        '<label class="svc-field">' +
+          '<span>لینک اینستاگرام (اختیاری)</span>' +
+          '<input class="input ltr" type="url" data-s="ig_link" ' +
+            'placeholder="https://instagram.com/…" value="' + u.esc(s.ig_link || '') + '">' +
+        '</label>' +
+        '<label class="svc-toggle">' +
+          '<input type="checkbox" data-s="active"' + (s.is_active === 0 ? '' : ' checked') + '>' +
+          '<span class="svc-toggle__track" aria-hidden="true"><span class="svc-toggle__knob"></span></span>' +
+          '<span class="svc-toggle__txt">' +
+            '<strong>نمایش در سایت</strong>' +
+            '<small>خدمت غیرفعال برای مشتری دیده نمی‌شود؛ نوبت‌های قبلی سر جای خود می‌مانند.</small>' +
+          '</span>' +
+        '</label>') +
+
+      svcGroup('tag', 'گزینه‌ها و قیمت‌ها',
+        'همان گزینه‌هایی که مشتری موقع رزرو می‌بیند؛ قیمت «از …» روی کارت از ارزان‌ترین گزینه حساب می‌شود.',
+        '<div class="svc-vars">' + variantRows + '</div>') +
+
+      svcGroup('empty', 'محتوای صفحه‌ی خدمت',
+        'این متن‌ها در صفحه‌ی اختصاصی هر خدمت، همان‌طور که اینجا مرتبشان می‌کنید، نمایش داده می‌شوند.',
+        '<div class="svc-subgroup">' +
+          '<h4 class="svc-sub">تگ‌ها — «مناسب برای»</h4>' +
+          listEditor('good_for', s.good_for || [], 'مثلاً: مژه‌های کم‌پشت', true) +
+        '</div>' +
+        '<div class="svc-subgroup">' +
+          '<h4 class="svc-sub">متن معرفی</h4>' +
+          '<p class="svc-hint">هر بند یک پاراگراف جدا در صفحه‌ی خدمت است.</p>' +
+          listEditor('description', s.description || [], 'متن پاراگراف…', false) +
+        '</div>' +
+        '<div class="svc-subgroup">' +
+          '<h4 class="svc-sub">این خدمت شامل چه چیزهایی می‌شود</h4>' +
+          listEditor('includes', s.includes || [], 'مثلاً: مشاوره‌ی رایگان', false) +
+        '</div>' +
+        '<div class="svc-subgroup">' +
+          '<h4 class="svc-sub">مراقبت‌های بعد از انجام</h4>' +
+          listEditor('aftercare', s.aftercare || [], 'مثلاً: تا ۲۴ ساعت آب نزنید', false) +
+        '</div>' +
+        '<div class="svc-subgroup">' +
+          '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
+          '<p class="svc-hint">پرسش‌ها برای مشتری بالای صفحه‌ی خدمت نمایش داده می‌شوند.</p>' +
+          faqEditor(s.faq || []) +
+        '</div>') +
+
+      /* ---- ذخیره‌ی پایین: در دسترسِ شست در موبایل ---- */
+      '<div class="svc-edit__foot">' +
+        '<button type="button" class="btn btn--primary" data-save="' + u.esc(s.id) + '"' +
+          saveDisabled + dirtyCls + '>' +
+          ZZ.icon('check', null, 16) + 'ذخیره‌ی تغییرات' +
+          '<span class="dirty-dot" aria-hidden="true"></span>' +
+        '</button>' +
+        '<button type="button" class="btn btn--quiet" data-back="1">بازگشت به فهرست</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderServices() {
+    if (!state.services) {
+      /* هنوز نیامده — در پس‌زمینه بگیر */
+      if (A.services) {
+        A.services().then(function (rows) {
+          state.services = rows;
+          safeRender();
+        }).catch(function (err) {
+          state.services = [];
+          ZZ.toast.error(err.message || 'خدمات بارگذاری نشد.');
+          safeRender();
+        });
+
+        return '<div class="svc-editor" aria-busy="true">' +
+          '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
+          '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
+        '</div>';
+      }
+
+      /* حالت نمایشی (بدون سرور): همان کاتالوگ سایت — تا ویرایشگر
+         بدون PHP هم دیده و ارزیابی شود */
+      state.services = localServiceRows();
+    }
+
+    /* ویرایشگر یک خدمت باز است؟ */
+    if (state.editingId != null) {
+      var editing = state.services.filter(function (s) {
+        return String(s.id) === String(state.editingId);
+      })[0];
+      if (editing) return serviceEditorHTML(editing);
+      state.editingId = null;   /* دیگر وجود ندارد؛ برگرد به فهرست */
+    }
+
+    return servicesListHTML(state.services);
   }
 
   /* ---------------- ویرایشگر فهرست‌ها ----------------
-     یک فهرست ساده از سطرهای متنی: هر سطر یک ورودی با دکمه‌ی حذف،
-     به‌علاوه‌ی یک دکمه برای افزودن سطر تازه. */
+     یک فهرست ساده از سطرهای متنی: هر سطر یک ورودی با دکمه‌های
+     جابه‌جایی و حذف، به‌علاوه‌ی یک دکمه برای افزودن سطر تازه.
+     ترتیب سطرها همان ترتیب نمایش در صفحه‌ی خدمت است. */
+
+  /** خوشه‌ی دکمه‌های هر سطر: بالا / پایین / حذف */
+  function rowBtns(delTitle) {
+    return '<span class="svc-row__btns">' +
+      '<button type="button" class="row-btn" data-row-up="1" ' +
+        'title="انتقال به بالا" aria-label="انتقال به بالا">' + ZZ.icon('chevronUp', null, 14) + '</button>' +
+      '<button type="button" class="row-btn" data-row-down="1" ' +
+        'title="انتقال به پایین" aria-label="انتقال به پایین">' + ZZ.icon('chevronDown', null, 14) + '</button>' +
+      '<button type="button" class="row-btn row-btn--del" data-del-row="1" ' +
+        'title="' + delTitle + '" aria-label="' + delTitle + '">' + ZZ.icon('x', null, 14) + '</button>' +
+    '</span>';
+  }
 
   function listRow(field, value, placeholder, chip) {
     return '<div class="svc-row' + (chip ? ' svc-row--chip' : '') + '">' +
@@ -896,8 +1000,7 @@
                    'placeholder="' + placeholder + '" value="' + u.esc(value) + '">'
                : '<textarea class="input" rows="2" data-list="' + field + '" ' +
                    'placeholder="' + placeholder + '">' + u.esc(value) + '</textarea>') +
-             '<button type="button" class="svc-del" data-del-row="1" ' +
-               'title="حذف این سطر" aria-label="حذف">' + ZZ.icon('x', null, 15) + '</button>' +
+             rowBtns('حذف این سطر') +
            '</div>';
   }
 
@@ -921,8 +1024,7 @@
              '<div class="svc-faq__head">' +
                '<input class="input" type="text" data-faq="q" placeholder="پرسش…" ' +
                  'value="' + u.esc(q) + '">' +
-               '<button type="button" class="svc-del" data-del-row="1" ' +
-                 'title="حذف این پرسش" aria-label="حذف">' + ZZ.icon('x', null, 15) + '</button>' +
+               rowBtns('حذف این پرسش') +
              '</div>' +
              '<textarea class="input" rows="2" data-faq="a" ' +
                'placeholder="پاسخ…">' + u.esc(a) + '</textarea>' +
@@ -944,27 +1046,28 @@
 
   /** جمع‌آوری مقادیر فرم یک خدمت */
   function collectService(card) {
+    var svc = state.services.filter(function (x) {
+      return String(x.id) === String(card.dataset.svc);
+    })[0];
+
     var payload = {};
     u.$$('[data-s]', card).forEach(function (el) {
-      payload[el.dataset.s] = el.value.trim();
+      if (el.dataset.s === 'active') {
+        payload.active = !!el.checked;   // کلید نمایش/عدم نمایش خدمت
+      } else {
+        payload[el.dataset.s] = el.value.trim();
+      }
     });
 
     payload.variants = u.$$('.svc-var', card).map(function (row) {
-      var i = parseInt(row.dataset.vi, 10);
-      var svc = state.services.filter(function (x) {
-        return x.id === parseInt(card.dataset.svc, 10);
-      })[0];
-      var orig = svc.variants[i];
-
+      var orig = svc.variants[parseInt(row.dataset.vi, 10)] || {};
       var get = function (f) { return u.$('[data-f="' + f + '"]', row); };
       return {
         id: orig.id,
-        key: orig.key,
         name: get('name').value.trim(),
         note: get('note').value.trim(),
         price: parseInt(get('price').value, 10) || 0,
-        duration_min: parseInt(get('duration_min').value, 10) || 60,
-        is_active: get('is_active').checked
+        duration_min: parseInt(get('duration_min').value, 10) || 60
       };
     });
 
@@ -995,6 +1098,64 @@
     return payload;
   }
 
+  /** جابه‌جایی سطر فهرست (بالا/پایین) — مستقیم روی DOM، بدون رندر */
+  function moveRow(btn, dir) {
+    var row = btn.closest('.svc-faq') || btn.closest('.svc-row');
+    if (!row) return;
+    var sib = dir === -1 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sib || (!sib.classList.contains('svc-row') && !sib.classList.contains('svc-faq'))) return;
+    if (dir === -1) row.parentNode.insertBefore(row, sib);
+    else row.parentNode.insertBefore(sib, row);
+    markDirty();
+  }
+
+  /** علامت‌گذاری «تغییر ذخیره‌نشده» روی دکمه‌های ذخیره‌ی ویرایشگر */
+  function markDirty() {
+    if (state.dirty) return;
+    state.dirty = true;
+    u.$$('.svc-edit [data-save]').forEach(function (b) {
+      b.classList.add('is-dirty');
+    });
+  }
+
+  /** پیاده‌کردن نتیجه‌ی ذخیره روی کش محلی — به‌جای گرفتن دوباره‌ی
+      کل فهرست از سرور که جای فرم و اسکرول کاربر را عوض می‌کند */
+  function applyServicePayload(sid, payload) {
+    var svc = (state.services || []).filter(function (x) {
+      return String(x.id) === String(sid);
+    })[0];
+    if (!svc) return;
+
+    svc.title = payload.title;
+    svc.short = payload.short || '';
+    svc.ig_link = payload.ig_link || '';
+    if (typeof payload.active === 'boolean') svc.is_active = payload.active ? 1 : 0;
+
+    (payload.variants || []).forEach(function (v, i) {
+      var orig = svc.variants[i];
+      if (!orig) return;
+      orig.name = v.name;
+      orig.note = v.note;
+      orig.price = v.price;
+      orig.duration_min = v.duration_min;
+    });
+
+    ['description', 'includes', 'aftercare', 'good_for', 'faq'].forEach(function (f) {
+      if (payload[f]) svc[f] = payload[f];
+    });
+
+    var prices = svc.variants.map(function (v) { return v.price; });
+    if (prices.length) svc.price_from = Math.min.apply(null, prices);
+  }
+
+  /** رندر امن — وقتی ویرایشگر خدمتی با تغییرات ذخیره‌نشده باز است،
+      هیچ رندر مجددی نباید اتفاق بیفتد وگرنه فرم کاربر با داده‌ی کش
+      بازنویسی و متن تایپ‌شده‌ی او از بین می‌رود. */
+  function safeRender() {
+    if (state.editingId != null && state.dirty) return;
+    render();
+  }
+
   /* ---------------- رندر کل صفحه ---------------- */
 
   /** کارت‌های آمار — کلیک‌پذیر تا مدیر با یک لمس به همان فهرست برسد */
@@ -1007,10 +1168,11 @@
         '<strong class="dash-card__num">' + (c.num === undefined || c.num === null ? '—' : c.num) + '</strong>' +
         '<span class="dash-card__lbl">' + c.label + '</span>';
 
+      var cls = 'dash-card' + (c.cls ? ' ' + c.cls : '') + (c.wide ? ' dash-card--wide' : '');
       if (!c.goto) {
-        return '<div class="dash-card' + (c.cls ? ' ' + c.cls : '') + '">' + inner + '</div>';
+        return '<div class="' + cls + '">' + inner + '</div>';
       }
-      return '<button type="button" class="dash-card' + (c.cls ? ' ' + c.cls : '') +
+      return '<button type="button" class="' + cls +
         '" data-goto="' + c.goto + '" title="' + u.esc(c.title || c.label) + '">' + inner + '</button>';
     }
 
@@ -1025,7 +1187,7 @@
       { num: st.users === undefined ? '—' : u.toFa(st.users), label: 'مراجعه‌کننده',
         icon: 'users' },
       { num: (typeof st.deposits === 'number') ? u.money(st.deposits) : '—',
-        label: 'بیعانه‌ی دریافتی', icon: 'wallet' }
+        label: 'بیعانه‌ی دریافتی', icon: 'wallet', wide: true }
     ];
 
     return '<div class="admin-dash">' + cards.map(card).join('') + '</div>';
@@ -1043,7 +1205,7 @@
       { id: 'pending',   label: 'در انتظار تأیید', count: pendingCount },
       { id: 'upcoming',  label: 'تأییدشده' },
       { id: 'past',      label: 'انجام شده' },
-      { id: 'cancelled', label: 'لغو / رد شده' },
+      { id: 'cancelled', label: 'لغو / رد' },
       { id: 'all',       label: 'همه' }
     ];
 
@@ -1184,9 +1346,27 @@
     if (s2) { s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length); }
   }, 300);
 
-  /** تعویض تب + اسکرول به بالای محتوا */
+  /** تعویض تب + اسکرول به بالای محتوا
+      اگر ویرایشگر خدمت با تغییرات ذخیره‌نشده باز باشد، اول تأیید بگیر. */
   function setTab(tab, opts) {
+    if (state.tab === 'services' && tab !== 'services' && state.editingId != null && state.dirty) {
+      confirmDanger({
+        title: 'تغییرات ذخیره نشده',
+        message: 'در ویرایشگر خدمت تغییرات ذخیره‌نشده دارید. بدون ذخیره خارج می‌شوید؟',
+        confirmLabel: 'خروج بدون ذخیره'
+      }).then(function (ok) {
+        if (!ok) return;
+        state.dirty = false;
+        doSetTab(tab, opts);
+      });
+      return;
+    }
+    doSetTab(tab, opts);
+  }
+
+  function doSetTab(tab, opts) {
     state.tab = tab;
+    if (opts && opts.apply) opts.apply();
     try {
       history.replaceState(null, '', '#' + tab);
     } catch (e) { /* noop */ }
@@ -1214,13 +1394,17 @@
       var gotoEl = e.target.closest('[data-goto]');
       if (gotoEl) {
         var g = gotoEl.dataset.goto.split(':');
-        state.tab = g[0];
-        if (g[0] === 'appointments' && g[1]) state.filter = g[1];
-        if (g[0] === 'days' && g[1] === 'today') {
-          state.selectedDay = u.dateKey(new Date());
-          state.calIndex = 0;
-        }
-        setTab(g[0]);
+        /* تغییرات وابسته (فیلتر/روز انتخابی) بعد از گاردِ تغییرات
+           ذخیره‌نشده اعمال می‌شوند، نه قبل از آن */
+        setTab(g[0], {
+          apply: function () {
+            if (g[0] === 'appointments' && g[1]) state.filter = g[1];
+            if (g[0] === 'days' && g[1] === 'today') {
+              state.selectedDay = u.dateKey(new Date());
+              state.calIndex = 0;
+            }
+          }
+        });
         return;
       }
 
@@ -1349,40 +1533,49 @@
         return;
       }
 
-      /* ---- باز/بسته کردن بخش‌های شماره‌دار ویرایشگر خدمت ---- */
-      var secToggle = e.target.closest('[data-svc-toggle]');
-      if (secToggle) {
-        var section = secToggle.closest('.svc-section');
-        if (section) {
-          var isOpen = section.classList.toggle('is-open');
-          section.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-          var card2 = section.closest('.svc-card');
-          var sid2 = card2 ? parseInt(card2.dataset.svc, 10) : null;
-          if (sid2 != null && secToggle.dataset.svcToggle) {
-            state.collapsedSections[sid2 + ':' + secToggle.dataset.svcToggle] = !isOpen;
-          }
-        }
-        return;
-      }
-
-      /* ---- باز/بسته کردن کارت خدمت ---- */
-      var toggle = e.target.closest('[data-toggle]');
-      if (toggle) {
-        var id = parseInt(toggle.dataset.toggle, 10);
-        state.editingId = (state.editingId === id) ? null : id;
+      /* ---- خدمات: باز کردن ویرایشگر از فهرست ---- */
+      var edit = e.target.closest('[data-edit]');
+      if (edit) {
+        state.editingId = edit.dataset.edit;
+        state.dirty = false;
         render();
+        global.scrollTo({
+          top: 0,
+          behavior: u.reducedMotion() ? 'auto' : 'smooth'
+        });
         return;
       }
 
-      if (e.target.closest('[data-cancel-edit]')) {
+      /* ---- خدمات: بازگشت از ویرایشگر به فهرست ---- */
+      var back = e.target.closest('[data-back]');
+      if (back) {
+        if (state.dirty) {
+          confirmDanger({
+            title: 'تغییرات ذخیره نشده',
+            message: 'از ویرایش این خدمت خارج می‌شوید؟ تغییرات ذخیره‌نشده از بین می‌رود.',
+            confirmLabel: 'خروج بدون ذخیره'
+          }).then(function (ok) {
+            if (!ok) return;
+            state.dirty = false;
+            state.editingId = null;
+            render();
+          });
+          return;
+        }
         state.editingId = null;
         render();
         return;
       }
 
-      /* ---- افزودن/حذف سطر در ویرایشگر خدمات ----
+      /* ---- افزودن/حذف/جابه‌جایی سطر در ویرایشگر خدمات ----
          این‌ها مستقیم روی DOM کار می‌کنند و render() صدا نمی‌زنند،
          وگرنه بقیه‌ی تغییرات ذخیره‌نشده‌ی کاربر پاک می‌شد. */
+
+      var up = e.target.closest('[data-row-up]');
+      if (up) { moveRow(up, -1); return; }
+
+      var down = e.target.closest('[data-row-down]');
+      if (down) { moveRow(down, 1); return; }
 
       var del = e.target.closest('[data-del-row]');
       if (del) {
@@ -1394,6 +1587,7 @@
           var addBtn = u.$('[data-add-row], [data-add-faq]', wrap);
           if (addBtn) addBtn.click();
         }
+        markDirty();
         return;
       }
 
@@ -1425,25 +1619,43 @@
       /* ---- ذخیره‌ی خدمت ---- */
       var save = e.target.closest('[data-save]');
       if (save) {
-        var sid = parseInt(save.dataset.save, 10);
-        var card = save.closest('.svc-card');
-        var payload = collectService(card);
+        var sid = save.dataset.save;
+        var editor = save.closest('.svc-edit');
+
+        if (typeof A.updateService !== 'function') {
+          ZZ.toast.info('در حالت نمایشی ذخیره‌ی محتوا ممکن نیست؛ پنل باید به سرور وصل باشد.');
+          return;
+        }
+        if (!editor) return;
+
+        var payload = collectService(editor);
 
         if (!payload.title) {
           ZZ.toast.error('نام خدمت نمی‌تواند خالی باشد.');
+          var titleInput = u.$('[data-s="title"]', editor);
+          if (titleInput) titleInput.focus();
           return;
         }
 
-        save.classList.add('is-loading');
-        ZZ.appointments.admin.updateService(sid, payload)
+        u.$$('[data-save]', editor).forEach(function (b) {
+          b.classList.add('is-loading');
+        });
+        A.updateService(sid, payload)
           .then(function () {
             ZZ.toast.ok('تغییرات ذخیره شد.');
-            state.services = null;   // تازه‌سازی از سرور
-            state.editingId = null;
-            render();
+            state.dirty = false;
+            /* کش محلی را همان لحظه به‌روز کن ولی دوباره رندر نکن:
+               فرم همان‌جا می‌ماند و جای اسکرول کاربر عوض نمی‌شود. */
+            applyServicePayload(sid, payload);
+            u.$$('.svc-edit [data-save]').forEach(function (b) {
+              b.classList.remove('is-loading');
+              b.classList.remove('is-dirty');
+            });
           })
           .catch(function (err) {
-            save.classList.remove('is-loading');
+            u.$$('[data-save]', editor).forEach(function (b) {
+              b.classList.remove('is-loading');
+            });
             ZZ.toast.error(err.message || 'ذخیره نشد.');
           });
         return;
@@ -1486,12 +1698,8 @@
         }
       }
 
-      /* صفحه‌کلید برای سربرگ‌های قابل‌باز/بسته‌شدن بخش خدمات */
-      var secToggle = e.target.closest && e.target.closest('[data-svc-toggle]');
-      if (!secToggle || e.target !== secToggle) return;
-      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-      e.preventDefault();
-      secToggle.click();
+      /* صفحه‌کلید: Enter/Space روی سربرگ‌ها هم کلیک را شبیه‌سازی کند
+         (سربرگ‌ها button هستند؛ این پشتیبانِ نسخه‌های قدیمی مرورگر است) */
     });
 
     /* ورودی‌ها — واگذارشده (delegated)، چون خودِ فیلدها با هر render
@@ -1499,6 +1707,17 @@
     root.addEventListener('input', function (e) {
       var el = e.target;
       if (!el || !el.dataset) return;
+
+      /* ویرایشگر خدمت: هر تایپ یعنی تغییر ذخیره‌نشده؛ نام خدمت
+         هم‌زمان در نوار بالای ویرایشگر زنده به‌روز می‌شود. */
+      if (el.closest('.svc-edit') &&
+          (el.dataset.s || el.dataset.f || el.dataset.list || el.dataset.faq)) {
+        markDirty();
+        if (el.dataset.s === 'title') {
+          var crumb = u.$('#svcEditTitle');
+          if (crumb) crumb.textContent = el.value.trim() || 'خدمت بی‌نام';
+        }
+      }
 
       /* نمایش زنده‌ی قیمت هنگام تایپ */
       if (el.dataset.f === 'price') {
@@ -1529,7 +1748,7 @@
        بیرون می‌اندازد. */
     /* وقتی تقویم ناهم‌گام از سرور رسید، دوباره رندر کن */
     global.addEventListener('zz:calendar', function () {
-      if (u.$('#adminRoot') && u.$('#adminRoot').innerHTML) render();
+      if (u.$('#adminRoot') && u.$('#adminRoot').innerHTML) safeRender();
     });
 
     /* تازه‌سازی داده‌ها وقتی مدیر به پنل برمی‌گردد — او معمولاً برای
@@ -1542,7 +1761,7 @@
       invalidate('slots:');
       invalidate('days');
       invalidate('stats');
-      render();
+      safeRender();
     }
     global.addEventListener('zz:refresh', refreshAll);
     document.addEventListener('visibilitychange', function () {
@@ -1559,6 +1778,14 @@
     var fl = u.param('filter');
     if (['pending', 'upcoming', 'past', 'cancelled', 'all'].indexOf(fl) > -1) {
       state.filter = fl;
+    }
+
+    /* لینک مستقیم به ویرایشگر یک خدمت: ?tab=services&svc={id} —
+       هم برای اشتراک‌گذاری، هم برای تست خودکار */
+    var svParam = u.param('svc');
+    if (svParam) {
+      state.tab = 'services';
+      state.editingId = svParam;
     }
 
     var boot = function () {

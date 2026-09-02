@@ -1523,18 +1523,15 @@ body.on-admin .toast-host {
   }
 }
 
-/* ---------- کارت‌های آمار کلیک‌پذیر ---------- */
+/* ---------- کارت‌های آمار کلیک‌پذیر ----------
+   بدون اسکرول افقی: موبایل دو ستون (کارت پول تمام‌عرض)،
+   از 760px به بالا پنج ستون در یک ردیف. */
 .admin-dash {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: var(--sp-5);
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
 }
-.admin-dash::-webkit-scrollbar { display: none; }
-.admin-dash { scrollbar-width: none; }
 
 .dash-card {
   position: relative;
@@ -1542,9 +1539,7 @@ body.on-admin .toast-host {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  flex: 0 0 auto;
-  width: 132px;
-  scroll-snap-align: start;
+  min-width: 0;
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -1575,12 +1570,17 @@ button.dash-card:active { transform: translateY(1px); }
   font-weight: 600;
   color: var(--ink-900);
   line-height: 1.35;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dash-card__lbl {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.7;
 }
+/* کارت پول روی موبایل دو ستونی: تمام‌عرض */
+.dash-card--wide { grid-column: span 2; }
 /* درخواستِ در انتظار = مهم‌ترین کارِ امروز مدیر */
 .dash-card.is-wait {
   border-color: var(--gold-300);
@@ -1593,39 +1593,35 @@ button.dash-card:active { transform: translateY(1px); }
 .dash-card.is-wait .dash-card__num { color: var(--warn-600); }
 
 @media (min-width: 760px) {
-  .admin-dash {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    overflow: visible;
-  }
-  .dash-card { width: auto; }
+  .admin-dash { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .dash-card--wide { grid-column: auto; }
 }
 
-/* ---------- فیلترها و جست‌وجو ---------- */
+/* ---------- فیلترها و جست‌وجو ----------
+   چیپ‌ها به جای ردیفِ اسکرول‌شونده، می‌شکنند؛ هیچ اسکرول
+   افقی‌ای در پنل نیست. */
 .admin-filters {
   position: sticky;
   top: calc(var(--header-h) + 6px);
   z-index: 20;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: var(--sp-2);
   margin-bottom: var(--sp-3);
   border: 1px solid var(--line);
-  border-radius: var(--r-full);
+  border-radius: var(--r-lg);
   background: rgba(255, 252, 250, 0.94);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.admin-filters::-webkit-scrollbar { display: none; }
 body.on-admin .admin-filters { top: calc(var(--header-h) + 6px); }
 @media (min-width: 1024px) {
   body.on-admin .admin-filters { top: 10px; }
 }
 
 .fchip {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1905,26 +1901,8 @@ a.admin-slot {
 /* ---------- ویرایشگر خدمات (پنل مدیریت) ---------- */
 .svc-editor { display: flex; flex-direction: column; gap: var(--sp-3); }
 
-.svc-card {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg-elevated);
-  overflow: hidden;
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-}
-.svc-card.is-open { border-color: var(--blush-300); box-shadow: var(--shadow-md); }
-
-.svc-card__head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  padding: var(--sp-4);
-  text-align: start;
-  transition: background-color var(--dur) var(--ease);
-}
-.svc-card__head:hover { background: var(--cream-50); }
-
+/* آیکون دایره‌ای — پایه‌ی مشترک با کارت خدمت در صفحه‌ی عمومی
+   (سلکتور عمومی‌اش در بخش services-grid بالاتر تعریف شده است) */
 .svc-card__icon {
   display: grid;
   place-items: center;
@@ -1934,37 +1912,80 @@ a.admin-slot {
   background: var(--blush-100);
   color: var(--rose-500);
 }
-.svc-card__info { flex: 1; min-width: 0; }
-.svc-card__name {
+
+/* ---------- فهرست خدمات: یک کارت ساده در هر خدمت ---------- */
+.svc-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.svc-item {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.svc-item:hover { border-color: var(--blush-300); box-shadow: var(--shadow-sm); }
+.svc-item.is-off { opacity: 0.75; }
+
+.svc-item__main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  text-align: start;
+}
+.svc-item__icon {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--blush-100);
+  color: var(--rose-500);
+}
+.svc-item__info { flex: 1; min-width: 0; }
+.svc-item__name {
   display: block;
   font-weight: 600;
   color: var(--ink-900);
   line-height: 1.6;
 }
-.svc-card__meta {
+.svc-item__meta {
   display: block;
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.7;
 }
-.svc-card__arrow {
-  flex-shrink: 0;
-  color: var(--ink-400);
-  transition: transform var(--dur) var(--ease);
-}
-.svc-card.is-open .svc-card__arrow { transform: rotate(-90deg); }
+.svc-item__arrow { flex-shrink: 0; color: var(--ink-400); }
+.svc-item.is-off .svc-item__main .badge { flex-shrink: 0; }
 
-/* بدنه با انیمیشن باز شدن */
-.svc-card__body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.32s var(--ease);
+/* «مشاهده‌ی صفحه» — پیش‌نمایش همان چیزی که مشتری می‌بیند */
+.svc-item__view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-inline-end: 8px;
+  align-self: center;
+  border-inline-start: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  transition: color var(--t-fast), background-color var(--t-fast);
 }
-.svc-card.is-open .svc-card__body { grid-template-rows: 1fr; }
-.svc-card__body > * { min-width: 0; }
-.svc-card__body__inner {
-  padding: var(--sp-4);
-  border-top: 1px solid var(--line);
+.svc-item__view:hover { color: var(--rose-600); background: var(--blush-100); }
+@media (max-width: 479px) {
+  .svc-item__view span { display: none; }   /* در موبایل فقط آیکون چشم */
 }
 
 .svc-field {
@@ -1997,7 +2018,6 @@ a.admin-slot {
   border-radius: var(--r-md);
   background: var(--cream-50);
 }
-.svc-var.is-off { opacity: 0.6; }
 .svc-var .svc-field { margin-bottom: var(--sp-2); }
 
 .svc-var__grid {
@@ -2009,14 +2029,28 @@ a.admin-slot {
   .svc-var__grid { grid-template-columns: 2fr 1.2fr 1fr; }
 }
 
+/* سربرگ هر گزینه: شماره + قیمت زنده */
+.svc-var__foot--top {
+  padding: 0 0 var(--sp-2);
+  border-top: 0;
+  border-bottom: 1px dashed var(--line);
+  margin: 0 0 var(--sp-3);
+}
 .svc-var__foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding-top: var(--sp-2);
-  border-top: 1px dashed var(--line);
-  margin-top: var(--sp-2);
+}
+.svc-var__num {
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--blush-100);
+  color: var(--rose-600);
+  font-size: var(--fs-xs);
+  font-weight: 600;
 }
 .svc-var__price {
   font-size: var(--fs-sm);
@@ -2024,16 +2058,6 @@ a.admin-slot {
   color: var(--rose-600);
   font-variant-numeric: tabular-nums;
 }
-
-.svc-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: var(--fs-xs);
-  color: var(--ink-700);
-  cursor: pointer;
-}
-.svc-check input { width: 16px; height: 16px; accent-color: var(--rose-500); }
 
 .svc-card__actions {
   display: flex;
@@ -2070,14 +2094,19 @@ a.admin-slot {
 /* تگ‌ها کوتاه‌اند — کنار هم بهتر دیده می‌شوند */
 .svc-row--chip .input { font-size: var(--fs-sm); }
 
-/* دکمه‌ی حذف سطر */
-.svc-del {
+/* دکمه‌های هر سطر: بالا / پایین / حذف — کنار هم، در دسترس شست */
+.svc-row__btns {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.row-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--cream-50);
@@ -2085,10 +2114,26 @@ a.admin-slot {
   cursor: pointer;
   transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
 }
-.svc-del:hover {
+.row-btn:hover { color: var(--ink-900); border-color: var(--line-strong); background: var(--cream-100); }
+.row-btn--del:hover {
   background: #FDECEC;
   border-color: #F3C9C9;
   color: #C0392B;
+}
+.row-btn:focus-visible {
+  outline: 2px solid var(--rose-400);
+  outline-offset: 2px;
+}
+/* در ردیف‌های یک‌خطی (تگ‌ها و پرسش‌ها) دکمه‌ها افقی می‌شوند تا
+   ارتفاع سطر کم بماند و هدف لمسی هم ۴۰px بماند */
+.svc-row--chip .svc-row__btns,
+.svc-faq__head .svc-row__btns {
+  flex-direction: row;
+}
+.svc-row--chip .row-btn,
+.svc-faq__head .row-btn {
+  width: 40px;
+  height: 40px;
 }
 
 /* دکمه‌ی افزودن سطر */
@@ -3262,83 +3307,114 @@ a.admin-slot {
   color: var(--rose-600);
 }
 
-/* ---------- ویرایشگر خدمت — بخش‌بندی واضح ---------- */
-.svc-section {
-  margin-bottom: var(--sp-4);
+/* ---------- ویرایشگر خدمت — نمای تمام‌صفحه ----------
+   همه‌ی گروه‌ها همیشه بازند؛ فقط اسکرول عمودی، بدون آکاردئون. */
+.svc-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* نوار چسبان بالای ویرایشگر: بازگشت + نام زنده + ذخیره */
+.svc-edit__bar {
+  position: sticky;
+  top: calc(var(--header-h) + 6px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: rgba(255, 252, 250, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+@media (min-width: 1024px) {
+  body.on-admin .svc-edit__bar { top: 10px; }
+}
+.svc-edit__bar .icon-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+}
+.svc-edit__crumb {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+}
+.svc-edit__crumb span {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+.svc-edit__crumb strong {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-edit__bar .btn {
+  flex: 0 0 auto;
+}
+
+/* نقطه‌ی «ذخیره‌نشده» روی دکمه‌های ذخیره */
+.dirty-dot {
+  display: none;
+  width: 8px;
+  height: 8px;
+  margin-inline-start: 7px;
+  border-radius: 50%;
+  background: var(--gold-300, #EAC98F);
+}
+[data-save].is-dirty .dirty-dot { display: inline-block; }
+
+/* گروه‌های همیشه‌باز ویرایشگر */
+.svc-group {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--bg-elevated);
   overflow: hidden;
 }
-.svc-section__head {
+.svc-group__head {
   display: flex;
   align-items: flex-start;
   gap: var(--sp-3);
-  padding: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
   background: var(--cream-50);
   border-bottom: 1px solid var(--line);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--dur) var(--ease);
 }
-.svc-section__head:hover {
-  background: var(--blush-100);
-}
-.svc-section__txt {
-  flex: 1;
-  min-width: 0;
-}
-.svc-section__num {
-  flex: 0 0 auto;
+.svc-group__ico {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
   border-radius: 50%;
   background: var(--blush-100);
   color: var(--rose-600);
-  font-weight: 600;
 }
-.svc-section__title {
+.svc-group__txt { flex: 1; min-width: 0; }
+.svc-group__title {
   margin: 0;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--ink-900);
   line-height: 1.6;
 }
-.svc-section__desc {
+.svc-group__hint {
   margin: 2px 0 0;
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.7;
 }
-.svc-section__chev {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-}
-.svc-section__chev svg {
-  width: 16px;
-  height: 16px;
-  transition: transform var(--dur) var(--ease);
-}
-.svc-section.is-open .svc-section__chev svg {
-  transform: rotate(180deg);
-}
-.svc-section:not(.is-open) .svc-section__head {
-  border-bottom-color: transparent;
-}
-.svc-section:not(.is-open) .svc-section__body {
-  display: none;
-}
-.svc-section__body {
+.svc-group__body {
   padding: var(--sp-4);
 }
+
 .svc-subgroup {
   margin-bottom: var(--sp-4);
   padding-bottom: var(--sp-4);
@@ -3355,7 +3431,7 @@ a.admin-slot {
   border-top: 0;
 }
 
-/* گزینه‌ی خدمت — مرتب‌تر و قابل‌فهم‌تر */
+/* گزینه‌ی خدمت — مرتب و قابل‌فهم */
 .svc-var {
   padding: var(--sp-4);
   border: 1px solid var(--line);
@@ -3370,65 +3446,86 @@ a.admin-slot {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr);
   }
 }
-.svc-var__foot {
-  padding-top: var(--sp-3);
-  margin-top: var(--sp-3);
-  border-top: 1px solid var(--line);
-}
-.svc-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  font-weight: 500;
-}
-.svc-card__body__inner {
-  padding: var(--sp-4);
-}
-.svc-editor__actions {
-  display: flex;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
-  margin-top: var(--sp-4);
-}
-.svc-editor__actions .btn {
-  flex: 1 1 auto;
-  min-width: 150px;
-  justify-content: center;
-}
 
-/* ---------- مدیریت روزها — بازه‌های خواناتر ---------- */
-.admin-slots {
+/* کلید نمایش/عدم نمایش خدمت در سایت */
+.svc-toggle {
+  display: flex;
+  align-items: flex-start;
   gap: var(--sp-3);
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  padding: var(--sp-3);
+  margin-top: var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--cream-50);
+  cursor: pointer;
 }
-.admin-slot {
-  min-height: 76px;
-  padding: 0.85rem;
-  border-radius: var(--r-lg);
+.svc-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
 }
-/* بازه‌ی رزروشده: نام مراجعه‌کننده + راهنمای تماس */
-.admin-slot__state strong {
+.svc-toggle__track {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  margin-top: 2px;
+  border-radius: var(--r-full);
+  background: var(--ink-200, #D8D2CC);
+  position: relative;
+  transition: background var(--dur) var(--ease);
+}
+.svc-toggle__knob {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(60, 42, 39, 0.25);
+  transition: transform var(--dur) var(--ease);
+}
+.svc-toggle input:checked + .svc-toggle__track {
+  background: var(--success-500);
+}
+.svc-toggle input:checked + .svc-toggle__track .svc-toggle__knob {
+  transform: translateX(-18px);   /* RTL: حرکت به چپ */
+}
+.svc-toggle input:focus-visible + .svc-toggle__track {
+  outline: 2px solid var(--rose-400);
+  outline-offset: 2px;
+}
+.svc-toggle__txt {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.7;
+}
+.svc-toggle__txt strong {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--ink-900);
+}
+.svc-toggle__txt small {
   display: block;
   font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--success-500);
-  line-height: 1.7;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--text-muted);
 }
-.admin-slot__state small {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.6875rem;
-  color: var(--ink-400);
-  line-height: 1.6;
+
+/* نوار ذخیره‌ی پایین — در دسترس شست در موبایل */
+.svc-edit__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
 }
-.admin-slot__state small svg { width: 11px; height: 11px; }
-a.admin-slot:hover { border-color: var(--success-500); }
+.svc-edit__foot .btn { justify-content: center; }
+@media (min-width: 640px) {
+  .svc-edit__foot {
+    flex-direction: row-reverse;
+  }
+  .svc-edit__foot .btn--primary { flex: 1; }
+}
 
 /* ---------- اسکلت کارت نوبت ---------- */
 .skel-card {

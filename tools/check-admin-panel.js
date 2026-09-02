@@ -387,10 +387,54 @@ async function main() {
 
   /* ============ ۴) خدمات ============ */
   {
+    /* فهرست خدمات در حالت محلی: کاتالوگ سایت به‌عنوان پیش‌نمایش */
     const { env } = await boot('#services');
     const h = env.root.innerHTML;
-    check('خدمات: در حالت محلی، حالت خالی به‌جای خطا', () =>
-      h.includes('svc-editor') || h.includes('empty') || 'تب خدمات رندر نشد');
+    check('خدمات: فهرست کاتالوگ در حالت محلی رندر شد', () =>
+      h.includes('class="svc-items"') && h.includes('data-edit=') || 'فهرست خدمات رندر نشد');
+    check('خدمات: لینک «مشاهده‌ی صفحه» روی هر خدمت هست', () =>
+      /svc-item__view[^>]*href="\.\.\/\.\.\/service\.html\?s=lash-extensions"/.test(h) ||
+      'لینک پیش‌نمایش نیست');
+    check('خدمات: خلاصه‌ی گزینه‌ها و قیمت روی کارت هست', () =>
+      h.includes('گزینه · از') || 'متای گزینه/قیمت نیست');
+    check('خدمات: آکاردئون قدیمی حذف شده', () =>
+      (!h.includes('svc-section') && !h.includes('data-toggle="')) || 'آکاردئون قدیمی مانده');
+    check('خدمات: چک‌باکس بی‌اثرِ گزینه‌ها حذف شده', () =>
+      !h.includes('data-f="is_active"') || 'چک‌باکس is_active مانده');
+    check('خدمات: بدون اسکرول افقی (بدون overflow-x)', () => {
+      const css = fs.readFileSync(path.join(ROOT, 'assets/css/pages.css'), 'utf8');
+      return (!/\.admin-dash\s*{[^}]*overflow-x/.test(css) &&
+              !/\.admin-filters\s*{[^}]*overflow-x/.test(css)) || 'اسکرول افقی مانده';
+    });
+
+    /* ویرایشگر: همه‌ی گروه‌ها یک‌جا + لینک مستقیم ?svc= */
+    const ed = await boot('?tab=services&svc=svc_lash_ext');
+    const eh = ed.env.root.innerHTML;
+    check('خدمات: لینک مستقیم ویرایشگر باز شد (?svc=)', () =>
+      (eh.includes('class="svc-edit"') && eh.includes('data-svc="svc_lash_ext"')) ||
+      'ویرایشگر باز نشد');
+    check('خدمات: نوار چسبان بازگشت + ذخیره‌ی بالا و پایین', () =>
+      (eh.includes('svc-edit__bar') && eh.includes('data-back="1"') &&
+       eh.includes('svc-edit__foot') && (eh.match(/data-save=/g) || []).length >= 2) ||
+      'نوارهای ویرایشگر کامل نیست');
+    check('خدمات: هر سه گروه همیشه‌باز رندر شدند', () =>
+      ['اطلاعات پایه‌ی خدمت', 'گزینه‌ها و قیمت‌ها', 'محتوای صفحه‌ی خدمت']
+        .every((t) => eh.includes(t)) || 'گروه‌ها ناقص‌اند');
+    check('خدمات: کلید «نمایش در سایت» هست و روشن است', () =>
+      eh.includes('data-s="active" checked') || 'کلید فعال نیست');
+    check('خدمات: فیلدهای فهرست‌ها + دکمه‌های جابه‌جایی هست', () =>
+      (['good_for', 'description', 'includes', 'aftercare'].every(
+        (f) => eh.includes('data-list-wrap="' + f + '"')
+      ) && eh.includes('data-faq-wrap') &&
+       eh.includes('data-row-up="1"') && eh.includes('data-row-down="1"')) ||
+      'فهرست‌ها یا جابه‌جایی ناقص');
+    check('خدمات: عنوان زنده در نوار و فیلد نام خدمت', () =>
+      (eh.includes('id="svcEditTitle"') && eh.includes('data-s="title"') &&
+       eh.includes('data-s="short"') && eh.includes('data-s="ig_link"')) ||
+      'فیلدهای پایه ناقص');
+    check('خدمات: شماره‌ی گزینه‌ها و قیمت زنده دیده می‌شود', () =>
+      (eh.includes('svc-var__num') && eh.includes('svc-var__price')) ||
+      'سربرگ گزینه‌ها نیست');
   }
 
   console.log('');

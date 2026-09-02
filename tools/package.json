@@ -3,6 +3,7 @@
   "private": true,
   "description": "ابزارهای بررسی کیفیت — جزو سایت نیستند و در بسته‌ی استقرار نمی‌آیند",
   "dependencies": {
+    "jsdom": "^30.0.1",
     "php-parser": "^3.7.0"
   }
 }

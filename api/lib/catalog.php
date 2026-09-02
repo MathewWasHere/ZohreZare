@@ -79,6 +79,10 @@ final class Catalog
             'image'        => $s['image'] ?? '',
             'icon'         => $s['icon'] ?? '',
             'ig_link'      => $s['ig_link'] ?: null,
+            /* وضعیت فعال/غیرفعال — صفحه‌ی عمومی فقط خدمت‌های فعال را
+               می‌گیرد (همیشه ۱)، اما پنل مدیریت فهرست کامل را می‌گیرد
+               و باید بداند کدام غیرفعال است. */
+            'is_active'    => (int) ($s['active'] ?? 1),
             'duration_min' => (int) $s['duration_min'],
             'price_from'   => (int) $s['price_from'],
             'variants'     => $variants,
@@ -195,6 +199,22 @@ final class Catalog
             Db::run('UPDATE services SET price_from = ? WHERE id = ?', [(int) $min, $id]);
         }
 
-        return self::bySlug((string) $s['slug']) ?? [];
+        /* ردیف تازه را همیشه برگردان — حتی اگر همین الان غیرفعال شده
+           باشد (bySlug فقط خدمت‌های فعال را برمی‌گرداند و پنل بعد از
+           غیرفعال‌ کردن نباید پاسخ خالی بگیرد). */
+        $variants = [];
+        foreach (Db::all(
+            'SELECT * FROM service_variants WHERE service_id = ? ORDER BY sort_order, id',
+            [$id]
+        ) as $v) {
+            $variants[] = [
+                'id'           => $v['variant_key'],
+                'name'         => $v['name'],
+                'note'         => $v['note'] ?? '',
+                'duration_min' => (int) $v['duration_min'],
+                'price'        => (int) $v['price'],
+            ];
+        }
+        return self::publicRow((Db::one('SELECT * FROM services WHERE id = ?', [$id]) ?: $s), $variants);
     }
 }
