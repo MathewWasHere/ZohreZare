@@ -130,65 +130,95 @@
 
 
 
-  /* ---------------- گام ۱: خدمت ---------------- */
+  /* ---------------- گام ۱: خدمت ----------------
+     هر خدمت یک کارت است و گزینه‌های دقیق همان‌جا داخل همان کارت
+     باز می‌شوند — یک کارت، یک تصمیم؛ گزینه‌ها دیگر در بلوک جدا و
+     پایین‌صفحه پنهان نمی‌مانند. */
   function renderServices() {
     var box = u.$('#serviceChoices');
+
     box.innerHTML = ZZ.services.getAll().map(function (s) {
-      return '' +
-        '<label class="choice">' +
+      var vars = s.variants.map(function (v) {
+        return '<label class="choice svc-choice__var">' +
+            '<input type="radio" name="variant" value="' + v.id + '"' +
+              (state.variantId === v.id ? ' checked' : '') + '>' +
+            '<span class="choice__box">' +
+              '<span class="choice__txt">' +
+                '<span class="choice__title">' + u.esc(v.name) + '</span><br>' +
+                '<span class="choice__meta">' + u.esc(v.note || '') + '</span>' +
+              '</span>' +
+              '<span class="choice__pricebox">' +
+                '<span class="choice__price">' + u.money(v.price) + ' ' + CUR + '</span>' +
+                '<span class="choice__dur">' + u.duration(v.durationMin) + '</span>' +
+              '</span>' +
+            '</span>' +
+          '</label>';
+      }).join('');
+
+      return '<div class="svc-choice' + (state.serviceId === s.id ? ' is-open' : '') +
+          '" data-service="' + u.esc(s.id) + '">' +
+        '<label class="choice svc-choice__head">' +
           '<input type="radio" name="service" value="' + s.id + '"' +
             (state.serviceId === s.id ? ' checked' : '') + '>' +
           '<span class="choice__box">' +
-            '<span style="flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;' +
-                  'border-radius:50%;background:var(--blush-100);color:var(--rose-500);">' +
-              ZZ.icon(s.icon, null, 20) + '</span>' +
-            '<span style="flex:1;min-width:0;">' +
+            '<span class="choice__ico">' + ZZ.icon(s.icon, null, 20) + '</span>' +
+            '<span class="choice__txt">' +
               '<span class="choice__title">' + u.esc(s.title) + '</span><br>' +
               '<span class="choice__meta">' + u.esc(s.short) + '</span>' +
             '</span>' +
+            ZZ.icon('chevronDown', 'svc-choice__chev', 18) +
           '</span>' +
-        '</label>';
+        '</label>' +
+        '<div class="svc-choice__body"' + (state.serviceId === s.id ? '' : ' hidden') + '>' +
+          '<p class="svc-choice__lbl" id="lblVars-' + u.esc(s.id) + '">کدام گزینه؟</p>' +
+          '<div class="svc-choice__vars" role="group" aria-labelledby="lblVars-' + u.esc(s.id) + '">' +
+            vars +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }).join('');
 
     box.addEventListener('change', function (e) {
-      if (e.target.name !== 'service') return;
-      state.serviceId = e.target.value;
-      state.variantId = null;
-      state.date = null;
-      state.time = null;
-      renderVariants();
-      updateStep1Button();
-      saveDraft();
+      if (e.target.name === 'service') {
+        state.serviceId = e.target.value;
+        state.variantId = null;
+        state.date = null;
+        state.time = null;
+        /* انتخابِ خدمتِ دیگر، گزینه‌ی قبلی را هم پاک می‌کند */
+        u.$$('input[name="variant"]', box).forEach(function (r) { r.checked = false; });
+        openServiceCard(state.serviceId, true);
+        updateStep1Button();
+        saveDraft();
+        return;
+      }
+      if (e.target.name === 'variant') {
+        state.variantId = e.target.value;
+        updateStep1Button();
+        saveDraft();
+      }
     });
   }
 
-  function renderVariants() {
-    var wrap = u.$('#variantWrap');
-    var box = u.$('#variantChoices');
-    var s = ZZ.services.getById(state.serviceId);
+  /** باز کردن کارت یک خدمت و بستن بقیه — با اسکرول ملایم به گزینه‌ها */
+  function openServiceCard(id, scroll) {
+    u.$$('.svc-choice', u.$('#serviceChoices')).forEach(function (card) {
+      var isOpen = card.dataset.service === id;
+      card.classList.toggle('is-open', isOpen);
+      var body = u.$('.svc-choice__body', card);
+      if (body) body.hidden = !isOpen;
+    });
 
-    if (!s) { wrap.hidden = true; box.innerHTML = ''; return; }
-    wrap.hidden = false;
-
-    box.innerHTML = s.variants.map(function (v) {
-      return '' +
-        '<label class="choice">' +
-          '<input type="radio" name="variant" value="' + v.id + '"' +
-            (state.variantId === v.id ? ' checked' : '') + '>' +
-          '<span class="choice__box">' +
-            '<span style="flex:1;min-width:0;">' +
-              '<span class="choice__title">' + u.esc(v.name) + '</span><br>' +
-              '<span class="choice__meta">' + u.esc(v.note || '') + '</span>' +
-            '</span>' +
-            '<span style="flex-shrink:0;text-align:left;">' +
-              '<span style="display:block;font-weight:500;color:var(--rose-600);white-space:nowrap;">' +
-                u.money(v.price) + ' ' + CUR + '</span>' +
-              '<span style="display:block;font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;">' +
-                u.duration(v.durationMin) + '</span>' +
-            '</span>' +
-          '</span>' +
-        '</label>';
-    }).join('');
+    if (scroll) {
+      var body = u.$('.svc-choice[data-service="' + id + '"] .svc-choice__body');
+      if (body && body.scrollIntoView) {
+        try {
+          body.scrollIntoView({
+            behavior: u.reducedMotion() ? 'auto' : 'smooth',
+            block: 'nearest'
+          });
+        } catch (e) { /* noop */ }
+      }
+    }
   }
 
   function updateStep1Button() { updateCtaBar(); }
@@ -663,15 +693,18 @@
 
     /* --- گام ۱ --- */
     renderServices();
-    renderVariants();
     updateStep1Button();
 
-    u.$('#variantChoices').addEventListener('change', function (e) {
-      if (e.target.name !== 'variant') return;
-      state.variantId = e.target.value;
-      updateStep1Button();
-      saveDraft();
-    });
+    /* خدمتِ از قبل انتخاب‌شده (لینک مستقیم یا پیش‌نویس): کارتش باز است؛
+       اگر زیر صفحه است، آرام به سمتش برو */
+    if (state.serviceId) {
+      var preselect = u.$('.svc-choice[data-service="' + state.serviceId + '"] .svc-choice__body');
+      if (preselect && preselect.scrollIntoView) {
+        try {
+          preselect.scrollIntoView({ behavior: u.reducedMotion() ? 'auto' : 'smooth', block: 'nearest' });
+        } catch (e) { /* noop */ }
+      }
+    }
 
     /* دکمه‌ی اصلی همه‌ی گام‌ها — در نوار چسبان پایین صفحه */
     u.$('#ctaBtn').addEventListener('click', function () {

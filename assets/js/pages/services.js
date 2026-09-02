@@ -17,12 +17,20 @@
         '<div class="svc-card__body">' +
           '<h3 class="svc-card__title">' + u.esc(s.title) + '</h3>' +
           '<p class="svc-card__text">' + u.esc(s.short) + '</p>' +
-          '<div class="pill-row" style="margin-bottom:var(--sp-4);">' +
-            s.variants.slice(0, 3).map(function (v) {
-              return '<span class="badge">' + u.esc(v.name) + '</span>';
+          /* منوی قیمت: مشتری قبل از کلیک، قیمت واقعی هر گزینه را می‌بیند؛
+             «از … تومان» به‌تنهایی انتظار قیمت را پایین می‌آورد. */
+          '<ul class="svc-menu" aria-label="گزینه‌ها و قیمت‌ها">' +
+            s.variants.slice(0, 4).map(function (v) {
+              var nm = String(v.name).replace(/\s*\([^)]*\)\s*/g, '');
+              return '<li>' +
+                  '<span class="svc-menu__name">' + u.esc(nm || v.name) + '</span>' +
+                  '<span class="svc-menu__price">' + u.money(v.price) + '</span>' +
+                '</li>';
             }).join('') +
-            (s.variants.length > 3 ? '<span class="badge badge--muted">+' + u.toFa(s.variants.length - 3) + '</span>' : '') +
-          '</div>' +
+            (s.variants.length > 4
+              ? '<li class="svc-menu__more">و ' + u.toFa(s.variants.length - 4) + ' گزینه‌ی دیگر</li>'
+              : '') +
+          '</ul>' +
           '<div class="svc-card__meta">' +
             '<span>' + ZZ.icon('clock') + u.duration(s.durationMin) + '</span>' +
             '<span>' + ZZ.icon('tag') + 'از ' + u.money(s.priceFrom) + ' ' + ZZ.config.booking.currency + '</span>' +

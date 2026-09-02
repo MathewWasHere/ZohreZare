@@ -315,7 +315,8 @@
   grid-template-columns: repeat(2, 1fr);
 }
 @media (min-width: 720px) {
-  .services-grid { grid-template-columns: repeat(4, 1fr); }
+  /* سه ستونه: با ۵ خدمت، چیدمان ۳+۲ می‌شود؛ ۶ خدمت هم ۳+۳ تمیز است */
+  .services-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .svc-card {
@@ -365,6 +366,42 @@
   padding: var(--sp-3);
 }
 .svc-card__title { font-size: var(--fs-sm); margin-bottom: var(--sp-2); line-height: 1.5; }
+
+/* منوی قیمت روی کارت خدمت — قیمت واقعی هر گزینه، به‌جای فقط «از …» */
+.svc-menu {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  border-top: 1px dashed var(--line);
+}
+.svc-menu li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+}
+.svc-menu__name {
+  color: var(--ink-700);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.svc-menu__price {
+  flex-shrink: 0;
+  color: var(--ink-900);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.svc-menu li.svc-menu__more {
+  justify-content: center;
+  border-bottom: 0;
+  color: var(--text-muted);
+}
 .svc-card__text {
   color: var(--text-muted);
   font-size: var(--fs-xs);
@@ -673,6 +710,92 @@
 
 .book-panel { display: none; }
 .book-panel.is-active { display: block; animation: step-in 0.35s var(--ease); }
+
+/* ---------- گام ۱: کارت خدمت با گزینه‌های درون‌کارت ----------
+   یک کارت = یک تصمیم؛ با انتخاب خدمت، گزینه‌های دقیق همان‌جا باز
+   می‌شوند و کارتِ باز خودش را با قاب رزگلدی نشان می‌دهد. */
+.svc-choice {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.svc-choice.is-open {
+  border-color: var(--rose-400);
+  box-shadow: var(--shadow-sm);
+}
+/* سرِ کارت داخل قابِ بیرونی است؛ قاب داخلی حذف می‌شود
+   (سرِ کارت فرزند مستقیم است؛ گزینه‌ها عمیق‌ترند و قاب خودشان را دارند) */
+.svc-choice > .svc-choice__head .choice__box {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+}
+.svc-choice > .svc-choice__head:hover .choice__box { border-color: transparent; }
+.svc-choice > .svc-choice__head input:checked + .choice__box {
+  border-color: transparent;
+  background: var(--blush-100);
+  box-shadow: none;
+}
+.svc-choice__chev {
+  flex-shrink: 0;
+  color: var(--ink-400);
+  transition: transform var(--dur) var(--ease);
+}
+.svc-choice.is-open .svc-choice__chev { transform: rotate(180deg); }
+
+.svc-choice__body {
+  padding: 0 var(--sp-3) var(--sp-3);
+  border-top: 1px dashed var(--line);
+  background: var(--cream-50);
+}
+.svc-choice__body[hidden] { display: none; }
+.svc-choice__lbl {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+.svc-choice__vars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+/* گزینه‌ها فشرده‌تر از کارت خدمت‌اند ولی همچنان هدف لمسی بزرگ */
+.svc-choice__var .choice__box {
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+}
+.svc-choice__txt { flex: 1; min-width: 0; }
+.svc-choice__var .choice__txt .choice__title { font-size: var(--fs-sm); }
+.choice__ico {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--blush-100);
+  color: var(--rose-500);
+}
+.choice__pricebox {
+  flex-shrink: 0;
+  text-align: left;
+}
+.choice__price {
+  display: block;
+  font-weight: 500;
+  color: var(--rose-600);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.choice__dur {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 
 /* انتخاب روز — تقویم هفت‌ستونه، بدون اسکرول افقی:
    ۱۴ روز در دو ردیف کامل دیده می‌شوند و زیر هر روز تعداد

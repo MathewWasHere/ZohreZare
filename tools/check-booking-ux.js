@@ -92,18 +92,40 @@ function ok(cond, name) {
   ok(win.document.body.classList.contains('on-booking'), 'صفحه‌ی رزرو راه‌اندازی شد');
 
   /* ---------- گام ۱: خدمت و گزینه ---------- */
-  ok($$('#serviceChoices .choice').length === ZZ.services.getAll().length, 'گام ۱: همه‌ی خدمت‌ها رندر شدند');
   ok($('#bookCta') && $('#bookCta').hidden === false, 'نوار چسبان از اول دیده می‌شود');
   ok($('#ctaBtn').disabled === true, 'تا قبل از انتخاب، دکمه‌ی ادامه غیرفعال است');
 
-  const svcCount = $$('#serviceChoices .choice').length;
+  const svcCount = $$('#serviceChoices .svc-choice').length;
+  ok(svcCount === ZZ.services.getAll().length, 'هر خدمت یک کارت است');
+  ok($$('#serviceChoices input[name="variant"]').length ===
+     ZZ.services.getAll().reduce((n, s) => n + s.variants.length, 0),
+     'گزینه‌ها داخل کارت‌ها رندر شدند (نه در بلوک جدا)');
+
   const svcInput = $$('#serviceChoices input[name="service"]')[0];
   svcInput.checked = true;
   fire(svcInput, 'change');
   await sleep(20);
-  ok($$('#variantChoices .choice').length > 0, 'بعد از انتخاب خدمت، گزینه‌ها آمدند');
+  const openCard = $('#serviceChoices .svc-choice.is-open');
+  ok(!!openCard, 'کارت خدمتِ انتخاب‌شده باز شد');
+  ok(openCard && $$('input[name="variant"]', openCard).length > 0, 'گزینه‌ها همان‌جا داخل کارت آمدند');
 
-  const varInput = $$('#variantChoices input[name="variant"]')[0];
+  /* تغییر خدمت: کارت قبلی بسته شود و انتخاب گزینه پاک شود */
+  const varInput0 = $$('input[name="variant"]', openCard)[0];
+  varInput0.checked = true;
+  fire(varInput0, 'change');
+  await sleep(10);
+  const secondSvc = $$('#serviceChoices input[name="service"]')[1];
+  secondSvc.checked = true;
+  fire(secondSvc, 'change');
+  await sleep(20);
+  ok($$('#serviceChoices .svc-choice.is-open').length === 1, 'با تغییر خدمت، فقط یک کارت باز است');
+  ok($$('input[name="variant"]:checked').length === 0, 'گزینه‌ی خدمت قبلی پاک شد');
+
+  /* برگشت به خدمت اول و انتخاب گزینه */
+  svcInput.checked = true;
+  fire(svcInput, 'change');
+  await sleep(20);
+  const varInput = $$('#serviceChoices .svc-choice.is-open input[name="variant"]')[0];
   varInput.checked = true;
   fire(varInput, 'change');
   await sleep(20);
@@ -199,6 +221,50 @@ function ok(cond, name) {
 
   /* ---------- خدمت از لینک مستقیم؟ گام ۱ با خدمت از قبل انتخاب‌شده ---------- */
   ok(svcCount === ZZ.services.getAll().length, 'تعداد خدمت‌ها در گام ۱ درست ماند');
+
+  /* ---------- صفحه‌ی خدمات: منوی قیمت روی کارت‌ها ---------- */
+  {
+    const pageHtml2 = read('services.html');
+    const body2 = pageHtml2.slice(pageHtml2.indexOf('<body'), pageHtml2.indexOf('</body>') + 7);
+    const dom2 = new JSDOM('<!DOCTYPE html><html lang="fa" dir="rtl"><head></head>' + body2, {
+      url: 'http://localhost/services.html',
+      runScripts: 'outside-only',
+      pretendToBeVisual: true,
+      virtualConsole: vc
+    });
+    const win2 = dom2.window;
+    win2.scrollTo = () => {};
+    const ctx2 = dom2.getInternalVMContext();
+    ['assets/js/core/config.js', 'assets/js/core/utils.js', 'assets/js/data/services.js', 'assets/js/ui/icons.js']
+      .forEach((f) => vm.runInContext(read(f), ctx2, { filename: f }));
+    const ZZ2 = win2.ZZ;
+    ZZ2.shell = () => {};
+    ZZ2.shell.reveal = () => {};
+    vm.runInContext(read('assets/js/pages/services.js'), ctx2, { filename: 'assets/js/pages/services.js' });
+
+    await sleep(80);
+    if (!win2.document.querySelector('#servicesGrid .svc-card')) {
+      win2.document.dispatchEvent(new win2.Event('DOMContentLoaded', { bubbles: true }));
+      await sleep(30);
+    }
+
+    const doc2 = win2.document;
+    const cards = Array.from(doc2.querySelectorAll('#servicesGrid .svc-card'));
+    ok(cards.length === ZZ2.services.getAll().length, 'صفحه‌ی خدمات: یک کارت برای هر خدمت (شامل میکروبلیدینگ جدا)');
+
+    const firstMenu = doc2.querySelector('#servicesGrid .svc-card .svc-menu');
+    ok(!!firstMenu, 'منوی قیمت روی کارت خدمت هست');
+    ok(firstMenu && firstMenu.querySelectorAll('.svc-menu__price').length >= 2,
+      'منوی قیمت: قیمت واقعی چند گزینه دیده می‌شود');
+    const firstPrice = ZZ2.u.money(ZZ2.services.getAll()[0].variants[0].price);
+    ok(doc2.querySelector('#servicesGrid').textContent.indexOf(firstPrice) > -1,
+      'منوی قیمت: قیمت گزینه‌ی اول با فرمت پولی خوانا است');
+
+    const more = doc2.querySelector('.svc-menu__more');
+    ok(!!more, 'خدمت ۵گزینه‌ی لب: «و N گزینه‌ی دیگر» نشان داده می‌شود');
+    ok(doc2.querySelector('#servicesGrid').textContent.indexOf('میکروبلیدینگ ابرو') > -1,
+      'میکروبلیدینگ کارت مستقل خودش را دارد');
+  }
 
   console.log(failures ? '\n✗ ' + failures + ' خطا' : '\nهمه‌ی جریان‌های تجربه‌ی رزرو ✓');
   process.exit(failures ? 1 : 0);
