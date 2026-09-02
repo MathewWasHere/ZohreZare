@@ -1017,19 +1017,61 @@ body.on-booking { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
 .linklike:focus-visible { outline: 2px solid var(--rose-400); outline-offset: 2px; border-radius: 4px; }
 
 /* ==================== حساب کاربری ==================== */
+/* کارت پروفایل — قبلاً نام/شماره/تولد بی‌کادر شناور بودند؛ حالا همه
+   در یک کادر مرتب با ردیف‌های برچسب‌دار دیده می‌شوند */
 .account-head {
+  margin-top: calc(var(--sp-5) + var(--header-h));
+  padding: var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  margin-bottom: var(--sp-5);
+}
+.account-head__bar {
   display: flex;
   align-items: center;
-  gap: var(--sp-4);
+  justify-content: space-between;
+  gap: var(--sp-3);
   flex-wrap: wrap;
-  padding-top: calc(var(--sp-5) + var(--header-h));
-  padding-bottom: var(--sp-5);
-  border-bottom: 1px solid var(--line);
-  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: var(--sp-2);
 }
-.account-head__info { flex: 1; min-width: 180px; }
-.account-head__info h1 { font-size: var(--fs-xl); font-weight: 500; margin-bottom: 2px; }
-.account-head__info p { color: var(--text-muted); font-size: var(--fs-sm); margin: 0; }
+.account-head__btns { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.account-info { margin: 0; }
+.account-info__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3) var(--sp-5);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px dashed var(--line);
+}
+.account-info__row:last-child { border-bottom: 0; padding-bottom: 0; }
+.account-info__row dt {
+  flex: 0 0 auto;
+  min-width: 96px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.account-info__row dd {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--ink-900);
+}
+.account-info__row dd svg { color: var(--rose-400); flex-shrink: 0; }
+.account-info__name { font-size: var(--fs-lg); font-weight: 500; margin: 0; }
+@media (max-width: 480px) {
+  .account-info__row dt { min-width: 84px; }
+}
 
 .tabs {
   display: flex;

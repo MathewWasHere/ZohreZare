@@ -114,21 +114,42 @@
 
     root.innerHTML = '' +
       '<div class="account-head">' +
-        '<span class="profile-box profile-box--lg">پروفایل</span>' +
-        '<div class="account-head__info">' +
-          '<h1>' + u.esc(user.name || 'خوش آمدید') + '</h1>' +
-          '<p class="ltr phone-num" style="text-align:start;">' + u.prettyPhoneHTML(user.phone) + '</p>' +
-          (user.birth
-            ? '<p style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 0;display:flex;align-items:center;gap:5px;">' +
-                ZZ.icon('cake', 'birth-ico', 14) + u.formatBirth(user.birth) + '</p>'
+        '<div class="account-head__bar">' +
+          '<span class="profile-box profile-box--lg">پروفایل</span>' +
+          '<div class="account-head__btns">' +
+            '<button class="btn btn--ghost btn--sm" id="editNameBtn">' +
+              ZZ.icon('edit', null, 16) + 'ویرایش نام</button>' +
+            '<button class="btn btn--quiet btn--sm" id="logoutBtn">' +
+              ZZ.icon('logout', null, 16) + 'خروج</button>' +
+          '</div>' +
+        '</div>' +
+        '<dl class="account-info">' +
+          '<div class="account-info__row">' +
+            '<dt>نام</dt>' +
+            '<dd><h1 class="account-info__name">' + u.esc(user.name || 'خوش آمدید') + '</h1></dd>' +
+          '</div>' +
+          '<div class="account-info__row">' +
+            '<dt>شماره موبایل</dt>' +
+            '<dd>' + ZZ.icon('phone', null, 15) +
+              '<span class="ltr">' + u.prettyPhoneHTML(user.phone) + '</span></dd>' +
+          '</div>' +
+          '<div class="account-info__row">' +
+            '<dt>تاریخ تولد</dt>' +
+            '<dd>' +
+              (user.birth
+                ? ZZ.icon('cake', 'birth-ico', 15) + u.formatBirth(user.birth)
+                : '<button type="button" class="linklike" data-goto-tab="profile">' +
+                    'برای هدیه‌ی روز تولد، ثبتش کنید</button>') +
+            '</dd>' +
+          '</div>' +
+          (user.createdAt
+            ? '<div class="account-info__row">' +
+                '<dt>عضویت از</dt>' +
+                '<dd>' + ZZ.icon('calendar', null, 15) +
+                  u.esc(u.faDate(new Date(user.createdAt), true)) + '</dd>' +
+              '</div>'
             : '') +
-        '</div>' +
-        '<div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;">' +
-          '<button class="btn btn--ghost btn--sm" id="editNameBtn">' +
-            ZZ.icon('edit', null, 16) + 'ویرایش نام</button>' +
-          '<button class="btn btn--quiet btn--sm" id="logoutBtn">' +
-            ZZ.icon('logout', null, 16) + 'خروج</button>' +
-        '</div>' +
+        '</dl>' +
       '</div>' +
 
       '<div class="mini-stats">' +
@@ -219,6 +240,14 @@
 
     /* تب‌ها */
     root.addEventListener('click', function (e) {
+      /* پیوندهای درون کارت (مثل «ثبت تاریخ تولد») → تب مربوطه */
+      var goto = e.target.closest('[data-goto-tab]');
+      if (goto) {
+        var gt = u.$('[data-tab="' + goto.dataset.gotoTab + '"]', root);
+        if (gt) gt.click();
+        return;
+      }
+
       var tab = e.target.closest('.tab');
       if (tab) {
         u.$$('.tab', root).forEach(function (t) { t.classList.remove('is-active'); });

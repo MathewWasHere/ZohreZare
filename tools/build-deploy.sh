@@ -34,6 +34,7 @@ node "$ROOT/tools/check-booking-flow.js" | tail -2
 
 echo "==> بررسی پنل مدیریت"
 node "$ROOT/tools/check-admin-panel.js" | tail -2
+node "$ROOT/tools/check-account-page.js" | tail -2
 
 echo "==> بررسی جریان تعاملی ویرایشگر خدمت"
 node "$ROOT/tools/check-editor-flow.js" | tail -2

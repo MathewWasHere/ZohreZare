@@ -255,6 +255,10 @@ async function main() {
          html().includes('data-reject="apt1"') &&
          html().includes('href="tel:+98')) || 'دکمه‌های عملیات نیست');
 
+      check('نوبت‌ها: دکمه‌ی رد مستقل و قرمز است (btn--danger + آیکون ضربدر)', () =>
+        (html().includes('class="btn btn--danger btn--sm" data-reject="apt1"') &&
+         /data-reject="apt1"><svg/.test(html())) || 'رد قرمز/مستقل نیست');
+
       check('نوبت‌ها: شمارنده‌ی در انتظار روی dock و فیلتر', () =>
         (html().includes('count-badge') && html().includes('count-dot')) || 'شمارنده نیست');
 

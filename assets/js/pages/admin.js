@@ -388,7 +388,9 @@
                 (a.deposit ? 'بیعانه' : 'ثبت بیعانه') + '</button>');
       btns.push('<button class="btn btn--primary btn--sm" data-approve="' + a.id + '">' +
                 ZZ.icon('check', null, 15) + 'تأیید</button>');
-      btns.push('<button class="btn btn--quiet btn--sm" data-reject="' + a.id + '">رد</button>');
+      /* رد = عمل مخرب؛ دکمه‌ی مستقل و قرمز تا با بقیه اشتباه نشود */
+      btns.push('<button class="btn btn--danger btn--sm" data-reject="' + a.id + '">' +
+                ZZ.icon('x', null, 15) + 'رد</button>');
     } else if (a.status === 'confirmed' && !r.isPast) {
       btns.push('<button class="btn btn--ghost btn--sm" data-deposit="' + a.id + '">' +
                 (a.deposit ? 'بیعانه' : 'ثبت بیعانه') + '</button>');
