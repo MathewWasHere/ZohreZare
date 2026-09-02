@@ -41,11 +41,15 @@ if ($guardBasis === '') {
 }
 $guard = substr(hash('sha256', $guardBasis), 0, 12);
 
-if (($_GET['key'] ?? '') !== $guard) {
+if (!hash_equals($guard, (string) ($_GET['key'] ?? ''))) {
+    /* کلید روی صفحه نمایش داده نمی‌شود — وگرنه نگهبان بی‌فایده است.
+       فرمولش: ۱۲ کاراکتر اول SHA-256 از کلید API پنل پیامک
+       (یا رمز پنل، اگر کلید API خالی است). */
     http_response_code(403);
     exit('<p style="font-family:sans-serif;direction:rtl">دسترسی مجاز نیست. '
        . 'آدرس را با پارامتر <code>?key=…</code> باز کنید. '
-       . 'کلید تشخیص شما: <code>' . htmlspecialchars($guard) . '</code></p>');
+       . 'کلید = ۱۲ کاراکتر اولِ <code>SHA-256</code> از کلید API پنل پیامک '
+       . '(یا رمز پنل، اگر کلید API خالی است).</p>');
 }
 
 require __DIR__ . '/lib/sms.php';

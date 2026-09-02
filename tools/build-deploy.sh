@@ -41,6 +41,9 @@ node "$ROOT/tools/check-editor-flow.js" | tail -2
 echo "==> بررسی تجربه‌ی تعاملی رزرو"
 node "$ROOT/tools/check-booking-ux.js" | tail -2
 
+echo "==> بررسی امنیت ورود و نشست"
+node "$ROOT/tools/check-security.js" | tail -2
+
 echo "==> بررسی نحو و امنیت فایل‌های PHP"
 node "$ROOT/tools/check-php.js" | tail -2
 
@@ -82,6 +85,28 @@ if [ -f "$DIST/api/config.php" ]; then
   echo "خطا: api/config.php داخل بسته مانده — ساخت متوقف شد." >&2
   exit 1
 fi
+
+echo "==> قفل حالت نمایشی برای پروداکشن"
+python3 - "$DIST" <<'PY'
+import pathlib, re, sys
+
+dist = pathlib.Path(sys.argv[1])
+cfg = dist / "assets" / "js" / "core" / "config.js"
+src = cfg.read_text(encoding="utf-8")
+
+# ۱) پرچم دمو خاموش شود: کد ثابت ۱۲۳۴، نمایش کد روی صفحه و
+#    «مدیر محلی» دیگر روی سایت واقعی کار نمی‌کنند؛ ورود فقط
+#    از سرور واقعی (پیامک) ممکن است.
+src, n1 = re.subn(r"demo:\s*true", "demo: false", src, count=1)
+# ۲) شماره‌ی مدیر از کدِ عمومی حذف شود؛ نقش را فقط سرور تعیین می‌کند.
+src, n2 = re.subn(r"phones:\s*\[[^\]]*\]", "phones: []", src, count=1)
+
+cfg.write_text(src, encoding="utf-8")
+if n1 != 1 or n2 != 1:
+    print("خطا: قفل پرچم دمو اعمال نشد — ساختار config.js عوض شده؟", file=sys.stderr)
+    sys.exit(1)
+print("    demo: false + admin.phones → []")
+PY
 
 echo "==> حذف اسکریپت توسعه‌ای PWA cache reset از صفحات HTML"
 python3 - "$DIST" <<'PY'
@@ -242,6 +267,16 @@ if problems:
     for p in problems:
         print("   -", p)
     sys.exit(1)
+
+# --- قفل پروداکشن: حالت نمایشی و شماره‌ی مدیر نباید در بسته باشند ---
+cfgjs = (dist / "assets" / "js" / "core" / "config.js").read_text(encoding="utf-8")
+if re.search(r"demo:\s*true", cfgjs):
+    print("!! مشکل: پرچم demo در بسته‌ی پروداکشن روشن است!", file=sys.stderr)
+    sys.exit(1)
+if re.search(r"phones:\s*\[[^\]]*\d", cfgjs):
+    print("!! مشکل: شماره‌ی مدیر در config عمومی بسته مانده است!", file=sys.stderr)
+    sys.exit(1)
+
 print("    همه‌چیز سالم است.")
 PY
 

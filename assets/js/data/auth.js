@@ -1,12 +1,16 @@
 /* ==========================================================================
    auth.js — احراز هویت با شماره موبایل و کد یک‌بارمصرف (OTP)
-   ⚠️ نسخه‌ی نمایشی: هیچ پیامکی ارسال نمی‌شود.
-      کد ثابت "1234" همیشه معتبر است و کد تولیدشده روی صفحه نمایش داده می‌شود.
 
-   برای اتصال واقعی، فقط دو تابع زیر را عوض کنید:
-     - requestCode()  →  POST /api/auth/request-code   (سرویس پیامک)
-     - verifyCode()   →  POST /api/auth/verify         (دریافت توکن)
-   بقیه‌ی کد (session، currentUser و ...) دست‌نخورده می‌ماند.
+   این نسخه فقط وقتی اجرا می‌شود که بک‌اند در دسترس نباشد (حالت آفلاین).
+   ⚠️ امنیت: رفتارهای نمایشی — کد ثابت "1234"، نمایش کد روی صفحه و
+   نقش «مدیر» برای شماره‌های config — فقط با پرچم config.demo فعال‌اند.
+   بسته‌ی پروداکشن این پرچم را خاموش می‌کند؛ پس روی سایت واقعی،
+   آفلاین بودن سرور یعنی «ورود ممکن نیست»، نه «ورود با ۱۲۳۴».
+
+   وقتی سرور بالاست، backend-bridge.js این دو تابع را با نسخه‌ی
+   واقعی (پیامک + کوکی نشست) جایگزین می‌کند:
+     - requestCode()  →  POST /api/auth/request-code
+     - verifyCode()   →  POST /api/auth/verify
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -19,6 +23,9 @@
   var K_USERS   = 'users';    // { [userId]: User }
   var K_SESSION = 'session';  // { userId, phone, at }
   var K_PENDING = 'pending';  // درخواست OTP در جریان
+
+  /** آیا حالت نمایشی روشن است؟ (در بسته‌ی پروداکشن خاموش است) */
+  function demoMode() { return ZZ.config.demo === true; }
 
   /**
    * مدل کاربر:
@@ -70,9 +77,19 @@
           return reject(new Error('شماره موبایل معتبر نیست. مثال: ۰۹۱۲۳۴۵۶۷۸۹'));
         }
 
+        /* بیرون از حالت نمایشی، ورودِ محلی ممنوع است: وقتی این نسخه
+           اجرا می‌شود یعنی سرور در دسترس نیست، و پذیرشِ کدِ جعلی
+           یعنی هر بازدیدکننده‌ای می‌تواند خودش را مدیر جا بزند. */
+        if (!demoMode()) {
+          return reject(new Error(
+            'سرور سایت در دسترس نیست؛ ورود و ثبت نوبت فعلاً ممکن نیست. ' +
+            'لطفاً چند لحظه بعد دوباره تلاش کنید.'
+          ));
+        }
+
         /* تاخیر کوتاه برای شبیه‌سازی رفت‌وبرگشت شبکه */
         setTimeout(function () {
-          var code = cfg.mockMode ? cfg.staticCode : randomCode(cfg.codeLength);
+          var code = (cfg.mockMode && demoMode()) ? cfg.staticCode : randomCode(cfg.codeLength);
           var pending = {
             phone: phone,
             code: code,
@@ -85,7 +102,7 @@
           resolve({
             phone: phone,
             /* در نسخه‌ی واقعی این فیلد هرگز به کلاینت برنمی‌گردد */
-            code: cfg.revealCodeOnScreen ? code : null,
+            code: (cfg.revealCodeOnScreen && demoMode()) ? code : null,
             isNewUser: !findByPhone(phone),
             expiresAt: pending.expiresAt
           });
@@ -123,7 +140,8 @@
 
         setTimeout(function () {
           /* در حالت نمایشی، کد ثابت هم پذیرفته می‌شود */
-          var ok = code === pending.code || (cfg.mockMode && code === cfg.staticCode);
+          var ok = code === pending.code ||
+            (cfg.mockMode && demoMode() && code === cfg.staticCode);
 
           if (!ok) {
             pending.attempts++;
@@ -143,10 +161,12 @@
               phone: pending.phone,
               name: '',
               birth: null,
-              /* نقش: در نسخه‌ی نمایشی شماره‌ی مدیر از config خوانده
-                 می‌شود. در نسخه‌ی واقعی این را سرور تعیین می‌کند. */
-              role: (ZZ.config.admin && ZZ.config.admin.phones || [])
-                      .indexOf(pending.phone) > -1 ? 'admin' : 'user',
+              /* نقش: فقط در حالت نمایشی و فقط از config محلی.
+                 روی سایت واقعی نقش را سرور تعیین می‌کند و این
+                 مسیر اصلاً نباید مدیر بسازد. */
+              role: (demoMode() &&
+                     (ZZ.config.admin && ZZ.config.admin.phones || [])
+                       .indexOf(pending.phone) > -1) ? 'admin' : 'user',
               createdAt: Date.now(),
               lastLoginAt: Date.now()
             };

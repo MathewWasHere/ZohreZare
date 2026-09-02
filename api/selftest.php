@@ -13,6 +13,39 @@
 define('ZZ_APP', true);
 ini_set('display_errors', '0');
 
+/* ------------------------------------------------------------------
+   نگهبان — این صفحه وضعیت نصب (نام دیتابیس، شماره‌ی مدیران،
+   تعداد کاربران و…) را نشان می‌دهد و نباید برای عموم باز باشد.
+   کلید = ۱۲ کاراکتر اول SHA-256 (رمز دیتابیس + |zz-selftest)
+   تا کسی که رمز دیتابیس را ندارد نتواند صفحه را باز کند.
+   مثال: selftest.php?key=abcd1234ef56
+   ------------------------------------------------------------------ */
+$configPath = __DIR__ . '/config.php';
+if (is_file($configPath)) {
+    /** @var array<string,mixed> $config */
+    $config = require $configPath;
+    $basis  = (string) ($config['db']['pass'] ?? '');
+    if ($basis !== '') {
+        $guard = substr(hash('sha256', $basis . '|zz-selftest'), 0, 12);
+        $given = (string) ($_GET['key'] ?? '');
+        if (!hash_equals($guard, $given)) {
+            http_response_code(403);
+            exit(
+                '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">' .
+                '<title>دسترسی مجاز نیست</title></head>' .
+                '<body style="font-family:system-ui;direction:rtl;padding:2rem;line-height:2">' .
+                '<h2>🔒 این صفحه قفل شده است</h2>' .
+                '<p>وضعیت نصب فقط برای مدیر سایت است.</p>' .
+                '<p>برای باز کردنش، آدرس را با <code>?key=…</code> باز کنید؛ ' .
+                'کلید = ۱۲ کاراکتر اولِ <code>SHA-256</code> از ' .
+                '<code>رمز-دیتابیس|zz-selftest</code> ' .
+                '(رمز دیتابیس در api/config.php آمده است).</p>' .
+                '</body></html>'
+            );
+        }
+    }
+}
+
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/config.php';
 require __DIR__ . '/lib/jalali.php';
