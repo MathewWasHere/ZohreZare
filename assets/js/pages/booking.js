@@ -26,7 +26,8 @@
     variantId: null,
     date: null,
     time: null,
-    note: ''
+    note: '',
+    calIndex: 0           // کدام ماهِ تقویم باز است
   };
 
   /* ---------------- پیش‌نویس ---------------- */
@@ -223,47 +224,118 @@
 
   function updateStep1Button() { updateCtaBar(); }
 
-  /* ---------------- گام ۲: روز و ساعت ---------------- */
+  /* ---------------- گام ۲: روز و ساعت ----------------
+     تقویم ماهانه‌ی شمسی — همان مؤلفه‌ای که مدیر در تب «روزها» می‌بیند:
+     یک عدد در هر خانه، نقطه‌ی وضعیت، ناوبری ماه. مشتری با تقویمِ ماه آشناست و هیچ متنی روی هم نمی‌افتد. */
+
+  var J_WEEK = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+  var J_FMT = null;
+
+  /** تبدیل Date به (سال، ماه، روز) شمسی — همان روش پنل مدیریت */
+  function jParts(d) {
+    if (!J_FMT) {
+      J_FMT = new Intl.DateTimeFormat('en-u-ca-persian', {
+        year: 'numeric', month: 'numeric', day: 'numeric'
+      });
+    }
+    var o = {};
+    J_FMT.formatToParts(d).forEach(function (p) {
+      if (p.type === 'year' || p.type === 'month' || p.type === 'day') {
+        o[p.type] = parseInt(p.value, 10);
+      }
+    });
+    return { y: o.year || 0, m: o.month || 0, d: o.day || 0 };
+  }
+
+  /** شماره‌ی روز هفته به سبک فارسی: شنبه=۰ … جمعه=۶ */
+  function pWeek(d) { return (d.getDay() + 1) % 7; }
+
+  /** گروه‌بندی روزها بر اساس ماه شمسی */
+  function monthGroups(days) {
+    var groups = [];
+    days.forEach(function (d) {
+      var jp = jParts(d.date);
+      var g = groups[groups.length - 1];
+      if (g && g.y === jp.y && g.m === jp.m) { g.days.push(d); return; }
+      groups.push({ y: jp.y, m: jp.m, label: u.jMonths[jp.m - 1] || '', days: [d] });
+    });
+    return groups;
+  }
+
   function renderDays() {
-    var strip = u.$('#dayStrip');
+    var wrap = u.$('#calWrap');
     /* در حالت بک‌اند، کش تقویم ممکن است برای پنل مدیریت بازتر باشد
-       (مثلاً ۶۰ روز)؛ نوار مشتری همیشه فقط به اندازه‌ی تنظیمات نشان
-       می‌دهد تا صفحه شلوغ نشود. */
+       (مثلاً ۶۰ روز)؛ تقویم مشتری همیشه فقط به اندازه‌ی تنظیمات نشان
+       می‌دهد — روزهای بعد از افق رزرو اصلاً رندر نمی‌شوند. */
     var days = ZZ.appointments.getDays().slice(0, ZZ.config.booking.daysAhead);
 
-    /* تقویم هفت‌ستونه — بدون اسکرول افقی: ۱۴ روز در دو ردیف.
-       زیر هر روز تعداد ساعت‌های خالی دیده می‌شود تا کاربر سراغ
-       روزِ پر نشود؛ روزهای تکمیل هم صریح نوشته می‌شوند. */
-    strip.innerHTML = days.map(function (d, i) {
-      var openCount = d.closed ? 0 : ZZ.appointments.getSlots(d.key, state.serviceId)
-        .filter(function (s) { return s.available; }).length;
-      var open = openCount > 0;
-      var sel = state.date === d.key;
-      var title = d.closed ? 'تعطیل' : (open ? d.label : 'ظرفیت این روز تکمیل است');
-      /* دو روز اول با نام کامل (امروز/فردا)؛ بقیه با حرف روز هفته،
-         چون خانه‌ها ۷تایی باریک‌اند */
-      var dayLbl = i < 2 ? u.esc(d.label) : u.esc(u.faWeekdayShort(d.date));
-      return '<button type="button" class="day-chip' + (sel ? ' is-selected' : '') + '" ' +
-               'data-date="' + d.key + '" title="' + u.esc(title) + '"' + (open ? '' : ' disabled') + '>' +
-               '<span class="day-chip__day">' + dayLbl + '</span>' +
-               '<span class="day-chip__date">' + u.esc(d.closed ? 'تعطیل' : d.short) + '</span>' +
-               (open
-                 ? '<span class="day-chip__cnt">' + u.toFa(openCount) + ' ساعت</span>'
-                 : (d.closed ? '' : '<span class="day-chip__cnt is-full">تکمیل</span>')) +
-             '</button>';
-    }).join('');
-
-    /* اگر روزی انتخاب نشده، اولین روز باز را بردار */
-    if (!state.date) {
+    /* اگر روزِ انتخاب‌شده معتبر نیست، اولین روزِ باز را بردار */
+    if (!state.date || !days.some(function (d) { return d.key === state.date; })) {
       var first = days.filter(function (d) {
         return !d.closed && ZZ.appointments.hasOpenSlot(d.key, state.serviceId);
       })[0];
-      if (first) {
-        state.date = first.key;
-        var btn = strip.querySelector('[data-date="' + first.key + '"]');
-        if (btn) btn.classList.add('is-selected');
-      }
+      state.date = first ? first.key : null;
+      if (!first) state.time = null;
     }
+
+    var groups = monthGroups(days);
+    var gi = Math.max(0, Math.min(state.calIndex || 0, groups.length - 1));
+    state.calIndex = gi;
+    var g = groups[gi];
+    var todayKey = u.dateKey(new Date());
+
+    /* ---- خانه‌های ماه: فقط عدد + نقطه‌ی وضعیت ---- */
+    var cells = '';
+    var lead = pWeek(g.days[0].date);
+    for (var b = 0; b < lead; b++) {
+      cells += '<span class="cal-cell cal-cell--blank" aria-hidden="true"></span>';
+    }
+
+    g.days.forEach(function (d) {
+      var jp = jParts(d.date);
+      var sel = state.date === d.key;
+      var isToday = d.key === todayKey;
+      var full = !d.closed && !ZZ.appointments.hasOpenSlot(d.key, state.serviceId);
+
+      var cls = 'cal-cell';
+      if (d.closed) cls += ' is-closed';
+      if (full && !sel) cls += ' is-full';
+      if (isToday) cls += ' is-today';
+      if (sel) cls += ' is-selected';
+
+      var dot = d.closed
+        ? '<span class="cal-dot cal-dot--closed" aria-hidden="true"></span>'
+        : (full ? '<span class="cal-dot cal-dot--full" aria-hidden="true"></span>' : '');
+
+      var aria = u.esc(u.faDayLabel(d.date) + ' ' + u.toFa(jp.d) + ' ' + g.label) +
+        (d.closed ? ' — تعطیل' : (full ? ' — ظرفیت تکمیل' : ''));
+
+      cells += '<button type="button" class="' + cls + '" data-date="' + d.key + '"' +
+        (sel ? ' aria-current="date"' : '') + ' aria-label="' + aria + '"' +
+        ((d.closed || full) && !sel ? ' disabled' : '') + '>' +
+        '<span class="cal-cell__num">' + u.toFa(jp.d) + '</span>' + dot +
+      '</button>';
+    });
+
+    wrap.innerHTML =
+      '<div class="cal-card">' +
+        '<div class="cal-head">' +
+          '<button type="button" class="icon-btn cal-nav" data-cal="-1" aria-label="ماه قبل"' +
+            (gi === 0 ? ' disabled' : '') + '>' + ZZ.icon('chevronRight', null, 18) + '</button>' +
+          '<h4 class="cal-title" aria-live="polite">' + u.esc(g.label) + ' ' + u.toFa(g.y) + '</h4>' +
+          '<button type="button" class="icon-btn cal-nav" data-cal="1" aria-label="ماه بعد"' +
+            (gi >= groups.length - 1 ? ' disabled' : '') + '>' + ZZ.icon('chevronLeft', null, 18) + '</button>' +
+        '</div>' +
+        '<div class="cal-grid cal-grid--head" aria-hidden="true">' +
+          J_WEEK.map(function (w) { return '<span class="cal-cell cal-cell--week">' + w + '</span>'; }).join('') +
+        '</div>' +
+        '<div class="cal-grid">' + cells + '</div>' +
+        '<div class="cal-legend">' +
+          '<span><span class="cal-dot cal-dot--closed"></span>تعطیل</span>' +
+          '<span><span class="cal-dot cal-dot--full"></span>ظرفیت تکمیل</span>' +
+          '<span><span class="cal-dot cal-dot--today"></span>امروز</span>' +
+        '</div>' +
+      '</div>';
   }
 
   function renderSlots() {
@@ -723,13 +795,21 @@
     });
 
     /* --- گام ۲ --- */
-    u.$('#dayStrip').addEventListener('click', function (e) {
-      var chip = e.target.closest('.day-chip');
-      if (!chip || chip.disabled) return;
-      u.$$('.day-chip', e.currentTarget).forEach(function (c) { c.classList.remove('is-selected'); });
-      chip.classList.add('is-selected');
-      state.date = chip.dataset.date;
+    u.$('#calWrap').addEventListener('click', function (e) {
+      /* ناوبری ماه */
+      var nav = e.target.closest('[data-cal]');
+      if (nav && !nav.disabled) {
+        state.calIndex = Math.max(0, (state.calIndex || 0) + parseInt(nav.dataset.cal, 10));
+        renderDays();
+        return;
+      }
+
+      /* انتخاب روز */
+      var cell = e.target.closest('button.cal-cell');
+      if (!cell || cell.disabled) return;
+      state.date = cell.dataset.date;
       state.time = null;
+      renderDays();
       renderSlots();
       updateStep2Button();
       saveDraft();

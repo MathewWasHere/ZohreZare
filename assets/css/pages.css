@@ -797,77 +797,10 @@
   white-space: nowrap;
 }
 
-/* انتخاب روز — تقویم هفت‌ستونه، بدون اسکرول افقی:
-   ۱۴ روز در دو ردیف کامل دیده می‌شوند و زیر هر روز تعداد
-   ساعت‌های خالی نوشته شده است. */
-.day-strip {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.day-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  min-width: 0;
-  min-height: 64px;
-  padding: 7px 2px 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
-  background: var(--bg-elevated);
-  text-align: center;
-  transition: all var(--dur) var(--ease);
-}
-.day-chip:hover:not(:disabled) { border-color: var(--blush-300); }
-.day-chip.is-selected {
-  background: var(--ink-900);
-  border-color: var(--ink-900);
-  color: var(--cream-50);
-}
-.day-chip.is-selected .day-chip__date { color: var(--cream-200); }
-.day-chip.is-selected .day-chip__cnt { color: var(--gold-300); }
-.day-chip:disabled { opacity: 0.45; cursor: not-allowed; }
-.day-chip:focus-visible {
-  outline: 2px solid var(--rose-400);
-  outline-offset: 2px;
-}
-.day-chip__day {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  line-height: 1.6;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.day-chip__date {
-  display: block;
-  font-size: 0.6875rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-  white-space: nowrap;
-}
-/* تعداد ساعت‌های خالی — دلیلِ روشنِ انتخاب‌پذیر بودن روز */
-.day-chip__cnt {
-  display: block;
-  margin-top: 1px;
-  font-size: 0.625rem;
-  line-height: 1.5;
-  color: var(--success-500);
-  white-space: nowrap;
-}
-.day-chip__cnt.is-full { color: var(--ink-400); }
-
-/* در گوشی‌های خیلی باریک شمارنده‌ها حذف می‌شوند تا خانه‌ها نفس
-   بکشند؛ برچسب «تکمیل» می‌ماند چون دلیل غیرفعال‌بودن را می‌گوید */
-@media (max-width: 359px) {
-  .day-chip__date { font-size: 0.625rem; }
-  .day-chip__cnt { display: none; }
-  .day-chip__cnt.is-full { display: block; }
-}
+/* انتخاب روز — تقویم ماهانه‌ی شمسی؛ همان کلاس‌های .cal-* که پنل
+   مدیریت هم استفاده می‌کند (تعریف‌شان در بخش پنل است و عمومی است):
+   یک عدد در هر خانه + نقطه‌ی وضعیت + ناوبری ماه. هیچ متنی روی هم
+   نمی‌افتد و با تقویم آشنای هر مشتری هم‌شکل است. */
 
 /* انتخاب ساعت */
 .slot-grid {

@@ -136,14 +136,39 @@ function ok(cond, name) {
   await sleep(20);
   ok($('#panelTime').classList.contains('is-active'), 'رفتیم به گام زمان');
 
-  /* ---------- گام ۲: تقویم هفت‌ستونه ---------- */
-  const chips = $$('.day-chip');
-  const daysAhead = ZZ.config.booking.daysAhead;
-  ok(chips.length === daysAhead, 'تقویم: ' + daysAhead + ' روز در دو ردیف هفت‌ستونه');
-  ok(chips[0].textContent.indexOf('امروز') > -1, 'خانه‌ی اول «امروز» است');
-  ok(chips[1].textContent.indexOf('فردا') > -1, 'خانه‌ی دوم «فردا» است');
-  ok($$('.day-chip__cnt').length > 0, 'شمارنده‌ی ساعت خالی روی روزها هست');
-  ok(chips.some((c) => c.classList.contains('is-selected')), 'اولین روز باز خودکار انتخاب شد');
+  /* ---------- گام ۲: تقویم ماهانه‌ی شمسی ---------- */
+  ok(!!$('#calWrap .cal-card'), 'تقویم ماهانه رندر شد (همان مؤلفه‌ی پنل مدیریت)');
+  ok($$('#calWrap .cal-grid--head .cal-cell--week').length === 7, 'سرِ هفته هفت‌ستونه است (ش تا ج)');
+  ok($('#calWrap .cal-title').textContent.replace(/\d/g, '').trim().length > 1, 'عنوان ماه شمسی نمایش داده می‌شود');
+  ok($$('#calWrap .cal-cell.is-today').length === 1, 'خانه‌ی «امروز» مشخص است');
+  ok($$('#calWrap button.cal-cell.is-selected').length === 1, 'اولین روزِ باز خودکار انتخاب شد');
+  ok($$('#calWrap .cal-cell.is-closed').length + $$('#calWrap .cal-cell.is-full').length > 0,
+    'روزهای تعطیل/تکمیل با نقطه‌ی وضعیت مشخص‌اند');
+  /* هر خانه فقط یک عدد است — هیچ متن هم‌پوشان ندارد */
+  ok($$('#calWrap .cal-cell__num').every((n) => n.textContent.trim().length <= 2),
+    'هر خانه فقط شماره‌ی روز را نشان می‌دهد (بدون هم‌پوشانی متن)');
+
+  const prevBtn = $('#calWrap [data-cal="-1"]');
+  ok(prevBtn && prevBtn.disabled === true, 'ماهِ قبل از ماه جاری غیرفعال است');
+  const nextBtn = $('#calWrap [data-cal="1"]');
+  if (nextBtn && !nextBtn.disabled) {
+    const titleBefore = $('#calWrap .cal-title').textContent;
+    nextBtn.click();
+    await sleep(20);
+    ok($('#calWrap .cal-title').textContent !== titleBefore, 'ناوبری ماه بعد کار می‌کند');
+    $('#calWrap [data-cal="-1"]').click();
+    await sleep(20);
+  }
+
+  /* انتخاب روزِ دیگر: نشانگر انتخاب جابه‌جا می‌شود */
+  const otherDay = $$('#calWrap button.cal-cell:not(.is-selected):not([disabled])')[0];
+  if (otherDay) {
+    otherDay.click();
+    await sleep(20);
+    ok($$('#calWrap button.cal-cell.is-selected').length === 1 &&
+       $$('#calWrap button.cal-cell.is-selected')[0].dataset.date === otherDay.dataset.date,
+      'انتخاب روز دیگر، نشانگر را جابه‌جا کرد');
+  }
 
   const enabledSlot = $$('#slotGrid .slot:not([disabled])')[0];
   ok(!!enabledSlot, 'ساعت خالی برای رزرو هست');
