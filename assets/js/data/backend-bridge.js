@@ -346,6 +346,34 @@
        «var A = ZZ.appointments.admin» یک ارجاع از آن می‌گیرند. اگر
        این‌جا شیء تازه بسازیم، آن صفحه‌ها به شیء قدیمیِ localStorage
        چسبیده می‌مانند و تغییراتشان هیچ‌وقت به سرور نمی‌رسد. */
+    /* ---- باشگاه مشتریان ----
+       ردیف سرور snake_case است؛ مثل بقیه‌ی پل، این‌جا به قالب
+       یکدستِ فرانت (camelCase) تبدیل می‌شود تا نسخه‌ی محلی همین
+       شکل را بدهد. */
+    function mapCustomer(r) {
+      return {
+        id: r.id,
+        phone: r.phone,
+        name: r.name || '',
+        birth: r.birth || null,
+        birthLabel: r.birth_label || null,
+        isBirthdayToday: !!r.is_birthday_today,
+        role: r.role || 'user',
+        createdAt: r.created_at || null,
+        lastLoginAt: r.last_login_at || null,
+        apptCount: r.appt_count || 0,
+        pendingCount: r.pending_count || 0,
+        upcomingCount: r.upcoming_count || 0,
+        doneCount: r.done_count || 0,
+        noShowCount: r.no_show_count || 0,
+        cancelledCount: r.cancelled_count || 0,
+        totalSpent: r.total_spent || 0,
+        totalDeposit: r.total_deposit || 0,
+        lastVisit: r.last_visit || null,
+        firstVisit: r.first_visit || null
+      };
+    }
+
     var adminApi = {
       stats: function () {
         return ZZ.api.admin.stats().then(function (s) {
@@ -430,7 +458,28 @@
       userHistory: function () {
         return { done: 0, noShow: 0, cancelled: 0, isNew: false, suggestDeposit: false };
       },
-      users: function (params) { return ZZ.api.admin.users(params); },
+      users: function (params) {
+        return ZZ.api.admin.users(params).then(function (rows) {
+          return rows.map(mapCustomer);
+        });
+      },
+      userDetail: function (id) {
+        return ZZ.api.admin.userDetail(id).then(function (r) {
+          return {
+            user: mapCustomer(r.user),
+            history: r.history || null,
+            appointments: (r.appointments || []).map(function (row) {
+              var a = mapAppointment(row.appt);
+              return {
+                appt: a,
+                service: { id: a.serviceId, title: a.serviceTitle },
+                variant: { id: a.variantId, name: a.variantName },
+                isPast: a.isPast
+              };
+            })
+          };
+        });
+      },
       birthdays: function () { return ZZ.api.admin.birthdays(); },
       services: function () { return ZZ.api.admin.services(); },
       updateService: function (id, data) {

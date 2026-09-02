@@ -3798,3 +3798,326 @@ a.admin-slot {
   .admin-content { padding-block: var(--sp-6) var(--sp-8); }
 }
 
+
+/* ==========================================================================
+   باشگاه مشتریان (تب چهارم پنل مدیریت)
+   فهرست کارت‌های مشتری + پرونده‌ی کامل: مشخصات، آمار و سابقه‌ی نوبت‌ها.
+   همان توکن‌ها و ریتم پنل — موبایل‌محور، بدون اسکرول افقی.
+   ========================================================================== */
+
+.cust-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- کارت مشتری ---- */
+.cust-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;            /* هدف لمسی ۴۴px+ */
+  padding: 12px 14px;
+  text-align: start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease),
+              background var(--dur) var(--ease);
+}
+.cust-card:hover { border-color: var(--blush-300); }
+.cust-card:focus-visible {
+  outline: 2px solid var(--rose-400);
+  outline-offset: 2px;
+}
+.cust-card:active { background: var(--cream-100); }
+
+.cust-avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blush-100);
+  color: var(--rose-600);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1;
+}
+.cust-avatar--lg {
+  width: 64px;
+  height: 64px;
+  font-size: var(--fs-xl);
+}
+
+.cust-card__main {
+  flex: 1 1 auto;
+  min-width: 0;                /* تا شماره بشود */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cust-card__name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cust-card__phone {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  justify-self: start;
+}
+.cust-card__last {
+  font-size: var(--fs-xs);
+  color: var(--ink-400);
+}
+
+.cust-card__chips {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 46%;
+}
+.cust-card__go { color: var(--ink-300); flex: none; }
+
+/* در موبایل، چیپ‌ها زیر مشخصات می‌روند نه کنارش */
+@media (max-width: 640px) {
+  .cust-card {
+    flex-wrap: wrap;
+  }
+  .cust-card__chips {
+    max-width: 100%;
+    order: 3;
+    justify-content: flex-start;
+    margin-inline-start: 56px;   /* هم‌تراز متن، بعد از آواتار */
+  }
+  .cust-card__go { display: none; }
+}
+
+/* ---- چیپ‌های آمار ---- */
+.cust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  line-height: 1.7;
+  background: var(--cream-100);
+  color: var(--ink-700);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.cust-chip--wait { background: var(--success-50); color: var(--success-500); border-color: transparent; }
+.cust-chip--bad  { background: var(--danger-50);  color: var(--danger-500);  border-color: transparent; }
+.cust-chip--new  { background: var(--blush-100);  color: var(--rose-600);    border-color: transparent; }
+.cust-chip--bday { background: var(--cream-50); color: var(--gold-500); border-color: transparent; }
+.cust-chip--admin { background: var(--ink-900); color: var(--cream-50); border-color: transparent; }
+.cust-chip svg { width: 12px; height: 12px; }
+
+/* ---- پرونده‌ی مشتری ---- */
+.cust-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+}
+.cust-profile__top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.cust-profile__id { min-width: 0; flex: 1 1 200px; }
+.cust-profile__id h3 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0 0 2px;
+}
+.cust-profile__phone {
+  font-size: var(--fs-md);
+  color: var(--rose-600);
+  text-decoration: none;
+  justify-self: start;
+}
+.cust-profile__phone:hover { text-decoration: underline; }
+.cust-profile__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.cust-profile__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;             /* بدون اسکرول افقی */
+}
+.cust-profile__meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line);
+}
+.cust-profile__meta > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cust-profile__meta dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink-400);
+}
+.cust-profile__meta dt svg { width: 14px; height: 14px; color: var(--rose-400); }
+.cust-profile__meta dd {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-700);
+}
+
+/* ---- کارت‌های آمار پرونده ---- */
+.cust-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+.cust-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  text-align: center;
+}
+.cust-stat strong {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--ink-900);
+  direction: ltr;
+}
+.cust-stat span {
+  font-size: var(--fs-xs);
+  color: var(--ink-400);
+  line-height: 1.6;
+}
+.cust-stat--wide { grid-column: span 2; }
+.cust-stat--bad strong { color: var(--danger-500); }
+
+/* ---- سابقه‌ی نوبت‌ها ---- */
+.cust-hist__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: var(--sp-5) 0 var(--sp-3);
+}
+.cust-hist__title svg { width: 17px; height: 17px; color: var(--rose-500); }
+
+.cust-hist__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cust-hist {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.cust-hist.is-cancelled { opacity: 0.62; }
+.cust-hist__when {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 118px;
+}
+.cust-hist__date {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+.cust-hist__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.cust-hist__time svg { width: 12px; height: 12px; color: var(--rose-400); }
+.cust-hist__body {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cust-hist__svc {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cust-hist__svc small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.cust-hist__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.cust-hist__dep, .cust-hist__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+.cust-hist__dep svg { color: var(--success-500); }
+.cust-hist__note svg { color: var(--ink-300); }
+.cust-hist__note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cust-hist > .badge { flex: none; margin-inline-start: auto; }
+@media (max-width: 560px) {
+  .cust-hist > .badge { margin-inline-start: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cust-card { transition: none; }
+}

@@ -186,9 +186,9 @@ async function main() {
     check('پوسته: dock موبایل و سایدبار دسکتاپ هر دو رندر می‌شوند', () =>
       (html().includes('admin-dock') && html().includes('admin-side')) || 'dock/side نیست');
 
-    check('پوسته: شش دکمه‌ی tab (۳ سایدبار + ۳ dock) با aria-selected', () => {
+    check('پوسته: هشت دکمه‌ی tab (۴ سایدبار + ۴ dock) با aria-selected', () => {
       const n = count(html(), 'role="tab"');
-      return n === 6 || 'role=tab باید ۶ باشد ولی ' + n + ' بود';
+      return n === 8 || 'role=tab باید ۸ باشد ولی ' + n + ' بود';
     });
 
     check('پوسته: پنل فعال «نوبت‌ها» است و بقیه hidden', () =>
@@ -200,7 +200,8 @@ async function main() {
     check('پوسته: کارت‌های آمار کلیک‌پذیر با data-goto', () =>
       (html().includes('data-goto="appointments:pending"') &&
        html().includes('data-goto="days:today"') &&
-       html().includes('data-goto="appointments:upcoming"')) || 'data-goto ندارد');
+       html().includes('data-goto="appointments:upcoming"') &&
+       html().includes('data-goto="customers"')) || 'data-goto ندارد');
 
     check('پوسته: جست‌وجو با آیکون و aria-label', () =>
       (html().includes('id="searchInput"') &&
@@ -385,7 +386,130 @@ async function main() {
       html().includes('admin-hint') || 'راهنما نیست');
   }
 
-  /* ============ ۴) خدمات ============ */
+  /* ============ ۴) باشگاه مشتریان ============ */
+  {
+    const today = new Date();
+    const dayKey = (off) => {
+      const x = new Date(today);
+      x.setDate(x.getDate() + off);
+      return x.toISOString().slice(0, 10);
+    };
+
+    const seed = (ZZ) => {
+      const svc = ZZ.services.getAll()[0];
+      const v = svc.variants[0];
+      const appt = (id, userId, off, over) => Object.assign({
+        id, userId,
+        serviceId: svc.id, variantId: v.id,
+        date: dayKey(off), time: '10:00',
+        durationMin: v.durationMin, price: v.price,
+        status: 'confirmed', note: '', deposit: null,
+        createdAt: Date.now() - 86400000 * (Math.abs(off) + 1)
+      }, over || {});
+
+      const admin = ZZ.auth.currentUser();
+      ZZ.store.set('users', {
+        [admin.id]: admin,
+        c1: {
+          id: 'c1', phone: '09121112233', name: 'سارا محمدی',
+          birth: { y: 1370, m: 6, d: 15 }, role: 'user',
+          createdAt: Date.now() - 86400000 * 40, lastLoginAt: Date.now() - 3600000
+        },
+        c2: {
+          id: 'c2', phone: '09355554444', name: 'مریم',
+          birth: null, role: 'user',
+          createdAt: Date.now() - 86400000 * 10, lastLoginAt: null
+        }
+      });
+      ZZ.store.set('appointments', [
+        appt('h1', 'c1', -20, {
+          status: 'done',
+          deposit: { amount: 500000, method: 'card', ref: '', note: '', paidAt: Date.now() }
+        }),
+        appt('h2', 'c1', -5, { status: 'no_show' }),
+        appt('h3', 'c1', 3, { status: 'pending', note: 'تماس گرفتم' }),
+        appt('h4', 'c2', -1, { status: 'confirmed' })
+      ]);
+    };
+
+    /* --- فهرست --- */
+    const lst = await boot('#customers', seed);
+    const lh = () => lst.env.root.innerHTML;
+
+    check('مشتریان: تب چهارم در dock و سایدبار هست', () =>
+      (count(lh(), 'data-tab="customers"') === 2 &&
+       lh().includes('باشگاه مشتریان')) || 'تب مشتریان نیست');
+
+    check('مشتریان: پنل فعال و فهرست سه کارت', () =>
+      (!/id="panel-customers"[^>]*hidden/.test(lh()) &&
+       count(lh(), 'class="cust-card"') === 3) || 'سه کارت رندر نشد');
+
+    check('مشتریان: جست‌وجوی نام/شماره با aria-label', () =>
+      (lh().includes('id="custSearch"') &&
+       lh().includes('جست‌وجو در باشگاه مشتریان')) || 'جست‌وجو نیست');
+
+    check('مشتریان: فعال‌ترین مشتری اول است (مرتب‌سازی آخرین مراجعه)', () => {
+      const first = lh().indexOf('cust-card__name');
+      return lh().slice(first, first + 120).includes('مریم') ||
+        'کاربر با آخرین مراجعه‌ی تازه‌تر اول نیست';
+    });
+
+    check('مشتریان: چیپ‌های آمار — مراجعه و غیبت', () =>
+      (lh().includes('۱ مراجعه') && lh().includes('۱ غیبت')) || 'چیپ آمار نیست');
+
+    check('مشتریان: جست‌وجو در لایه‌ی داده (نام و شماره)', () => {
+      const A = lst.ZZ.appointments.admin;
+      const byName = A.users({ q: 'سارا' });
+      const byPhone = A.users({ q: '0912111' });
+      return (byName.length === 1 && byName[0].id === 'c1' &&
+              byPhone.length === 1 && byPhone[0].id === 'c1') ||
+        'فیلتر نام/شماره درست کار نمی‌کند';
+    });
+
+    check('مشتریان: آمار لایه‌ی داده — سارا: ۱ مراجعه، ۱ غیبت، ۱ در انتظار', () => {
+      const c = lst.ZZ.appointments.admin.users({}).find((x) => x.id === 'c1');
+      return (c.doneCount === 1 && c.noShowCount === 1 && c.pendingCount === 1 &&
+              c.apptCount === 3 && c.totalDeposit === 500000) ||
+        'آمار سارا درست نیست: ' + JSON.stringify(c);
+    });
+
+    /* --- پرونده از لینک مستقیم --- */
+    const det = await boot('?tab=customers&cust=c1', seed);
+    const dh = () => det.env.root.innerHTML;
+
+    check('مشتریان: پرونده از لینک مستقیم باز شد (?cust=)', () =>
+      (dh().includes('class="cust-profile"') &&
+       dh().includes('سارا محمدی')) || 'پرونده باز نشد');
+
+    check('مشتریان: شماره با دکمه‌ی تماس و واتساپ', () =>
+      (dh().includes('href="tel:+989121112233"') &&
+       dh().includes('https://wa.me/989121112233')) || 'لینک تماس/واتساپ نیست');
+
+    check('مشتریان: هشدار بیعانه برای سابقه‌ی غیبت', () =>
+      dh().includes('بیعانه بگیرید') || 'هشدار غیبت نیست');
+
+    check('مشتریان: مشخصات — تولد و تاریخ عضویت', () =>
+      (dh().includes('تاریخ تولد') && dh().includes('عضو از')) || 'متاها نیست');
+
+    check('مشتریان: کارت‌های آمار پرونده', () =>
+      (dh().includes('cust-stat') && dh().includes('مجموع خرید')) || 'کارت آمار نیست');
+
+    check('مشتریان: هر سه نوبت در سابقه با یادداشت مشتری', () =>
+      (count(dh(), 'class="cust-hist ') === 3 &&
+       dh().includes('تماس گرفتم') &&
+       dh().includes('بیعانه ' + lst.ZZ.u.money(500000))) || 'سابقه ناقص است');
+
+    check('مشتریان: بازگشت به فهرست از پرونده', () =>
+      dh().includes('data-back-cust') || 'دکمه‌ی بازگشت نیست');
+
+    /* --- مشتری بدون تولد/سابقه‌ی خالی --- */
+    const d2 = await boot('?tab=customers&cust=c2', seed);
+    const d2h = d2.env.root.innerHTML;
+    check('مشتریان: پرونده‌ی مشتری بدون تولد، سطر تولد ندارد', () =>
+      (!d2h.includes('تاریخ تولد') && d2h.includes('cust-profile')) || 'سطر تولد بی‌داده هست');
+  }
+
+  /* ============ ۵) خدمات ============ */
   {
     /* فهرست خدمات در حالت محلی: کاتالوگ سایت به‌عنوان پیش‌نمایش */
     const { env } = await boot('#services');

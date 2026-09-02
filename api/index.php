@@ -348,6 +348,11 @@ if (strncmp($path, '/admin/', 7) === 0) {
         Http::json(Admin::users(['q' => Http::query('q')]));
     }
 
+    if (match_path('/admin/users/*', $path, $args)) {
+        only('GET');
+        Http::json(Admin::userDetail($args[0]));
+    }
+
     if ($path === '/admin/birthdays') {
         only('GET');
         Http::json(Admin::birthdays());

@@ -29,6 +29,7 @@
   var TABS = [
     { id: 'appointments', label: 'نوبت‌ها',       short: 'نوبت‌ها',  icon: 'calendarDays' },
     { id: 'days',         label: 'روزها و ساعت‌ها', short: 'روزها',   icon: 'clock' },
+    { id: 'customers',    label: 'باشگاه مشتریان', short: 'مشتریان', icon: 'users' },
     { id: 'services',     label: 'خدمات و محتوا',  short: 'خدمات',  icon: 'tag' }
   ];
 
@@ -44,13 +45,15 @@
   var J_WEEK = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
   var state = {
-    tab: 'appointments',   // appointments | days | services
+    tab: 'appointments',   // appointments | days | customers | services
     /* پیش‌فرض روی صف درخواست‌هاست: اولین چیزی که مدیر باید ببیند
        رزروهایی است که منتظر تماس و تأیید او هستند. */
     filter: 'pending',     // pending | upcoming | past | cancelled | all
     q: '',
     selectedDay: null,
     calIndex: 0,           // کدام ماهِ تقویم باز است
+    custQ: '',             // جست‌وجوی باشگاه مشتریان
+    custId: null,          // مشتری که پرونده‌اش باز است
     services: null,        // کش خدمات برای تب ویرایش
     editingId: null,       // خدمتی که ویرایشگرش باز است
     /* dirty یعنی کاربر در ویرایشگر چیزی تغییر داده که هنوز ذخیره
@@ -113,6 +116,8 @@
     invalidate('slots:');
     invalidate('days');
     invalidate('stats');
+    invalidate('customers');
+    invalidate('cust:');
     render();
   }
 
@@ -940,6 +945,236 @@
     '</div>';
   }
 
+  /* ---------------- باشگاه مشتریان ----------------
+     فهرست همه‌ی مشتری‌ها با جست‌وجو، و با یک لمس پرونده‌ی کامل:
+     مشخصات، آمار سابقه و همه‌ی نوبت‌های او. */
+
+  /** چیپ‌های کوچک آمار روی کارت مشتری */
+  function custChips(c) {
+    var out = [];
+    if (c.doneCount) {
+      out.push('<span class="cust-chip">' + u.toFa(c.doneCount) + ' مراجعه</span>');
+    }
+    var active = (c.upcomingCount || 0) + (c.pendingCount || 0);
+    if (active) {
+      out.push('<span class="cust-chip cust-chip--wait">' + u.toFa(active) + ' فعال</span>');
+    }
+    if (c.noShowCount) {
+      out.push('<span class="cust-chip cust-chip--bad">' + u.toFa(c.noShowCount) + ' غیبت</span>');
+    }
+    if (!c.apptCount) {
+      out.push('<span class="cust-chip cust-chip--new">مشتری جدید</span>');
+    }
+    if (c.isBirthdayToday) {
+      out.push('<span class="cust-chip cust-chip--bday">' + ZZ.icon('cake', null, 12) + 'تولد امروز</span>');
+    }
+    if (c.role === 'admin') {
+      out.push('<span class="cust-chip cust-chip--admin">مدیر</span>');
+    }
+    return out.join('');
+  }
+
+  function custAvatar(c, lg) {
+    var initial = (c.name || '').trim().charAt(0);
+    return '<span class="cust-avatar' + (lg ? ' cust-avatar--lg' : '') + '" aria-hidden="true">' +
+      (initial ? u.esc(initial) : ZZ.icon('user', null, lg ? 26 : 18)) +
+    '</span>';
+  }
+
+  function customerCard(c) {
+    var name = c.name || 'بدون نام';
+    var last = c.lastVisit
+      ? 'آخرین مراجعه: ' + u.esc(u.faDate(u.fromKey(String(c.lastVisit).slice(0, 10))))
+      : 'هنوز مراجعه‌ای نداشته';
+
+    return '' +
+      '<button type="button" class="cust-card" data-cust="' + u.esc(c.id) + '">' +
+        custAvatar(c) +
+        '<span class="cust-card__main">' +
+          '<strong class="cust-card__name">' + u.esc(name) + '</strong>' +
+          '<span class="cust-card__phone ltr phone-num">' + u.prettyPhoneHTML(c.phone || '') + '</span>' +
+          '<span class="cust-card__last">' + last + '</span>' +
+        '</span>' +
+        '<span class="cust-card__chips">' + custChips(c) + '</span>' +
+        ZZ.icon('chevronLeft', 'cust-card__go', 16) +
+      '</button>';
+  }
+
+  function skeletonCustomers() {
+    return skeletonAppts();
+  }
+
+  /** یک ردیف از سابقه‌ی نوبت‌های مشتری */
+  function custHistRow(r) {
+    var a = r.appt;
+    var st = a.statusLabel
+      ? { text: a.statusLabel, cls: a.statusClass || 'badge--ok' }
+      : ZZ.appointments.statusLabel(a);
+    var d = u.fromKey(a.date);
+    var svc = r.service && r.service.title ? r.service.title : '—';
+    var variant = r.variant && r.variant.name ? r.variant.name : '';
+    var dep = a.deposit || null;
+
+    return '' +
+      '<article class="cust-hist admin-appt--' + a.status + (a.status === 'cancelled' ? ' is-cancelled' : '') + '">' +
+        '<div class="cust-hist__when">' +
+          '<span class="cust-hist__date">' + u.esc(u.faDate(d)) + '</span>' +
+          '<span class="cust-hist__time">' + ZZ.icon('clock', null, 13) + 'ساعت ' + u.toFa(a.time) + '</span>' +
+        '</div>' +
+        '<div class="cust-hist__body">' +
+          '<div class="cust-hist__svc">' + u.esc(svc) +
+            (variant ? ' <small>' + u.esc(variant) + '</small>' : '') +
+          '</div>' +
+          '<div class="cust-hist__meta">' +
+            '<span>' + u.money(a.price || 0) + ' ' + CUR + '</span>' +
+            (dep ? '<span class="cust-hist__dep">' + ZZ.icon('wallet', null, 13) +
+              'بیعانه ' + u.money(dep.amount) + '</span>' : '') +
+            (a.note ? '<span class="cust-hist__note">' + ZZ.icon('edit', null, 13) + u.esc(a.note) + '</span>' : '') +
+            (a.status === 'rejected' && a.rejectReason
+              ? '<span class="cust-hist__note">' + ZZ.icon('info', null, 13) + u.esc(a.rejectReason) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<span class="badge ' + st.cls + '">' + st.text + '</span>' +
+      '</article>';
+  }
+
+  /** پرونده‌ی کامل مشتری — نمای تک‌صفحه مثل ویرایشگر خدمت */
+  function renderCustomerDetail() {
+    var key = 'cust:' + state.custId;
+    var data = pull(key, function () { return A.userDetail(state.custId); }, null);
+
+    if (data === null) {
+      return '<div class="svc-edit">' +
+        '<div class="svc-edit__head">' +
+          '<button type="button" class="btn btn--ghost btn--sm" data-back-cust>' +
+            ZZ.icon('arrowRight', null, 16) + 'بازگشت</button>' +
+          '<h2>پرونده‌ی مشتری</h2>' +
+        '</div>' + skeletonCustomers() + '</div>';
+    }
+    if (!data) {
+      return '<div class="svc-edit">' +
+        '<div class="svc-edit__head">' +
+          '<button type="button" class="btn btn--ghost btn--sm" data-back-cust>' +
+            ZZ.icon('arrowRight', null, 16) + 'بازگشت</button>' +
+          '<h2>پرونده‌ی مشتری</h2>' +
+        '</div>' +
+        '<div class="empty"><div class="empty__icon">' + ZZ.icon('user', null, 56) + '</div>' +
+          '<h3>پیدا نشد</h3><p>این مشتری حذف شده است.</p></div></div>';
+    }
+
+    var c = data.user;
+    var h = data.history || {};
+    var rows = data.appointments || [];
+    var waPhone = '98' + String(c.phone || '').replace(/^0+/, '');
+
+    var stats = [
+      { num: u.toFa(c.doneCount || 0), label: 'مراجعه' },
+      { num: u.toFa((c.upcomingCount || 0) + (c.pendingCount || 0)), label: 'فعال' },
+      { num: u.toFa(c.noShowCount || 0), label: 'غیبت', bad: c.noShowCount > 0 },
+      { num: u.toFa(c.cancelledCount || 0), label: 'لغو' },
+      { num: u.money(c.totalSpent || 0), label: 'مجموع خرید ' + CUR, wide: true }
+    ];
+    if (c.totalDeposit) {
+      stats.push({ num: u.money(c.totalDeposit), label: 'بیعانه ' + CUR, wide: true });
+    }
+
+    var meta = [];
+    if (c.birthLabel || (c.birth && u.formatBirth)) {
+      meta.push({ ico: 'cake', label: 'تاریخ تولد',
+        val: c.birthLabel || u.formatBirth(c.birth) + (c.isBirthdayToday ? ' — امروز تولدش است!' : '') });
+    }
+    if (c.createdAt) {
+      meta.push({ ico: 'calendar', label: 'عضو از', val: u.faDate(new Date(c.createdAt)) });
+    }
+    if (c.lastLoginAt) {
+      meta.push({ ico: 'clock', label: 'آخرین ورود', val: u.faDate(new Date(c.lastLoginAt)) });
+    }
+
+    return '' +
+      '<div class="svc-edit" data-cust-open="1">' +
+        '<div class="svc-edit__head">' +
+          '<button type="button" class="btn btn--ghost btn--sm" data-back-cust>' +
+            ZZ.icon('arrowRight', null, 16) + 'بازگشت به فهرست</button>' +
+          '<h2>پرونده‌ی مشتری</h2>' +
+        '</div>' +
+
+        /* مشخصات */
+        '<div class="cust-profile">' +
+          '<div class="cust-profile__top">' +
+            custAvatar(c, true) +
+            '<div class="cust-profile__id">' +
+              '<h3>' + u.esc(c.name || 'بدون نام') + '</h3>' +
+              '<a class="cust-profile__phone ltr phone-num" href="tel:+' + waPhone + '">' +
+                u.prettyPhoneHTML(c.phone || '') + '</a>' +
+              '<div class="cust-profile__chips">' + custChips(c) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cust-profile__actions">' +
+            '<a class="btn btn--primary btn--sm" href="tel:+' + waPhone + '">' +
+              ZZ.icon('phoneCall', null, 16) + 'تماس</a>' +
+            '<a class="btn btn--soft btn--sm" href="https://wa.me/' + waPhone +
+              '" target="_blank" rel="noopener">' + ZZ.icon('whatsapp', null, 16) + 'واتساپ</a>' +
+            (h.suggestDeposit
+              ? '<span class="badge badge--danger">' + ZZ.icon('alert', null, 13) +
+                'سابقه‌ی غیبت — بیعانه بگیرید</span>'
+              : '') +
+          '</div>' +
+          (meta.length
+            ? '<dl class="cust-profile__meta">' + meta.map(function (m) {
+                return '<div><dt>' + ZZ.icon(m.ico, null, 14) + m.label + '</dt><dd>' + u.esc(m.val) + '</dd></div>';
+              }).join('') + '</dl>'
+            : '') +
+        '</div>' +
+
+        /* آمار */
+        '<div class="cust-stats">' +
+          stats.map(function (s) {
+            return '<div class="cust-stat' + (s.wide ? ' cust-stat--wide' : '') +
+              (s.bad ? ' cust-stat--bad' : '') + '">' +
+              '<strong>' + s.num + '</strong><span>' + u.esc(s.label) + '</span></div>';
+          }).join('') +
+        '</div>' +
+
+        /* سابقه */
+        '<h3 class="cust-hist__title">' + ZZ.icon('calendarDays', null, 16) +
+          'سابقه‌ی نوبت‌ها' + (rows.length ? ' (' + u.toFa(rows.length) + ')' : '') + '</h3>' +
+        (rows.length
+          ? '<div class="cust-hist__list">' + rows.map(custHistRow).join('') + '</div>'
+          : '<div class="empty"><div class="empty__icon">' + ZZ.icon('calendar', null, 48) + '</div>' +
+              '<h3>هنوز نوبتی ثبت نشده</h3>' +
+              '<p>این مشتری تا الان رزرويی نداشته است.</p></div>') +
+      '</div>';
+  }
+
+  function renderCustomers() {
+    if (state.custId != null) return renderCustomerDetail();
+
+    var key = 'customers:' + state.custQ;
+    var rows = pull(key, function () { return A.users({ q: state.custQ }); }, null);
+
+    var search = '' +
+      '<div class="admin-search">' +
+        ZZ.icon('search', 'admin-search__ico', 17) +
+        '<input class="input" id="custSearch" type="search" ' +
+          'placeholder="جست‌وجوی نام یا شماره…‌" value="' + u.esc(state.custQ) + '" ' +
+          'aria-label="جست‌وجو در باشگاه مشتریان">' +
+      '</div>';
+
+    if (rows === null) return search + skeletonCustomers();
+
+    if (!rows.length) {
+      return search +
+        '<div class="empty">' +
+          '<div class="empty__icon">' + ZZ.icon('users', null, 56) + '</div>' +
+          '<h3>مشتری پیدا نشد</h3>' +
+          '<p>' + (state.custQ ? 'با این جست‌وجو نتیجه‌ای نبود.' :
+            'هر کسی که وارد حساب شود یا نوبت بگیرد، این‌جا دیده می‌شود.') + '</p>' +
+        '</div>';
+    }
+
+    return search + '<div class="cust-list">' + rows.map(customerCard).join('') + '</div>';
+  }
+
   function renderServices() {
     if (!state.services) {
       /* هنوز نیامده — در پس‌زمینه بگیر */
@@ -1184,8 +1419,8 @@
         icon: 'calendarDays', goto: 'days:today', title: 'برنامه و ساعت‌های امروز' },
       { num: st.upcoming === undefined ? '—' : u.toFa(st.upcoming), label: 'نوبت پیش رو',
         icon: 'calendar', goto: 'appointments:upcoming', title: 'دیدن نوبت‌های تأییدشده' },
-      { num: st.users === undefined ? '—' : u.toFa(st.users), label: 'مراجعه‌کننده',
-        icon: 'users' },
+      { num: st.users === undefined ? '—' : u.toFa(st.users), label: 'مشتری',
+        icon: 'users', goto: 'customers', title: 'باشگاه مشتریان — سابقه و مشخصات' },
       { num: (typeof st.deposits === 'number') ? u.money(st.deposits) : '—',
         label: 'بیعانه‌ی دریافتی', icon: 'wallet', wide: true }
     ];
@@ -1311,6 +1546,11 @@
             renderDays() +
           '</section>' +
 
+          '<section class="admin-panel" id="panel-customers" role="tabpanel" ' +
+            'aria-labelledby="tab-customers"' + (state.tab === 'customers' ? '' : ' hidden') + '>' +
+            renderCustomers() +
+          '</section>' +
+
           '<section class="admin-panel" id="panel-services" role="tabpanel" ' +
             'aria-labelledby="tab-services"' + (state.tab === 'services' ? '' : ' hidden') + '>' +
             renderServices() +
@@ -1343,6 +1583,13 @@
     render();
     /* فوکوس را برگردان تا تایپ قطع نشود */
     var s2 = u.$('#searchInput');
+    if (s2) { s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length); }
+  }, 300);
+
+  /* جست‌وجوی باشگاه مشتریان — debounce جدا تا با نوبت‌ها قاطی نشود */
+  var runCustSearch = u.debounce(function () {
+    render();
+    var s2 = u.$('#custSearch');
     if (s2) { s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length); }
   }, 300);
 
@@ -1527,9 +1774,30 @@
             invalidate('slots:');
             invalidate('days');
             invalidate('stats');
+            invalidate('customers');
+            invalidate('cust:');
             render();
           });
         });
+        return;
+      }
+
+      /* ---- باشگاه مشتریان: باز کردن پرونده ---- */
+      var cust = e.target.closest('[data-cust]');
+      if (cust) {
+        state.custId = cust.dataset.cust;
+        render();
+        global.scrollTo({
+          top: 0,
+          behavior: u.reducedMotion() ? 'auto' : 'smooth'
+        });
+        return;
+      }
+
+      /* ---- باشگاه مشتریان: بازگشت به فهرست ---- */
+      if (e.target.closest('[data-back-cust]')) {
+        state.custId = null;
+        render();
         return;
       }
 
@@ -1732,6 +2000,10 @@
         state.q = el.value;
         runSearch();
       }
+      if (el.id === 'custSearch') {
+        state.custQ = el.value;
+        runCustSearch();
+      }
     });
   }
 
@@ -1786,6 +2058,13 @@
     if (svParam) {
       state.tab = 'services';
       state.editingId = svParam;
+    }
+
+    /* لینک مستقیم به پرونده‌ی یک مشتری: ?tab=customers&cust={id} */
+    var cuParam = u.param('cust');
+    if (cuParam) {
+      state.tab = 'customers';
+      state.custId = cuParam;
     }
 
     var boot = function () {

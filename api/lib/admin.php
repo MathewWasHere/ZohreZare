@@ -407,6 +407,7 @@ final class Admin
         $search = trim((string) ($q['q'] ?? ''));
         $params = [];
         $where  = '';
+        $now    = date('Y-m-d H:i');
 
         if ($search !== '') {
             $like   = '%' . Jalali::en($search) . '%';
@@ -414,25 +415,156 @@ final class Admin
             $params = [$like, $like];
         }
 
+        /* آمارِ هر مشتری کنار خودش — با زیرپرس‌وجو، تا فهرست با یک
+           کوئری بیاید و نه به‌ازای هر مشتری یکی. سقف ۵۰۰ نفر برای
+           یک سالن کاملاً کافی است. */
         $rows = Db::all(
             'SELECT u.*,
                     (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id) AS appt_count,
+                    (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id
+                       AND a.status = "pending") AS pending_count,
+                    (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id
+                       AND a.status = "confirmed" AND CONCAT(a.date," ",a.time) >= ?) AS upcoming_count,
+                    (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id
+                       AND (a.status = "done" OR (a.status = "confirmed"
+                           AND CONCAT(a.date," ",a.time) < ?))) AS done_count,
+                    (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id
+                       AND a.status = "no_show") AS no_show_count,
+                    (SELECT COUNT(*) FROM appointments a WHERE a.user_id = u.id
+                       AND a.status IN ("cancelled","rejected")) AS cancelled_count,
+                    (SELECT COALESCE(SUM(a.price), 0) FROM appointments a WHERE a.user_id = u.id
+                       AND (a.status = "done" OR (a.status = "confirmed"
+                           AND CONCAT(a.date," ",a.time) < ?))) AS total_spent,
+                    (SELECT COALESCE(SUM(a.deposit_amount), 0) FROM appointments a
+                       WHERE a.user_id = u.id AND a.deposit_amount IS NOT NULL) AS total_deposit,
                     (SELECT MAX(CONCAT(a.date," ",a.time)) FROM appointments a
-                      WHERE a.user_id = u.id AND a.status IN ("confirmed","done")) AS last_visit
+                       WHERE a.user_id = u.id AND a.status IN ("confirmed","done")) AS last_visit,
+                    (SELECT MIN(CONCAT(a.date," ",a.time)) FROM appointments a
+                       WHERE a.user_id = u.id) AS first_visit
                FROM users u' . $where . '
               ORDER BY u.created_at DESC LIMIT 500',
-            $params
+            array_merge([$now, $now, $now], $params)
         );
 
         $out = [];
         foreach ($rows as $r) {
-            $pub = Auth::publicUser($r);
-            $pub['appt_count'] = (int) $r['appt_count'];
-            $pub['last_visit'] = $r['last_visit'] ?: null;
-            $pub['created_at'] = strtotime((string) $r['created_at']) * 1000;
-            $out[] = $pub;
+            $out[] = self::publicCustomer($r);
         }
+
+        /* مرتب‌سازی در PHP: فعال‌ترین مشتری (آخرین مراجعه) اول،
+           بعدِ او تازه‌ترین عضو. ORDER BY روی زیرپرس‌وجوها در SQL
+           قابل‌اتکا نیست، این‌جا ساده‌تر و صریح‌تر است. */
+        usort($out, function ($a, $b) {
+            $la = (string) ($a['last_visit'] ?? '');
+            $lb = (string) ($b['last_visit'] ?? '');
+            if ($la !== $lb) return strcmp($lb, $la);
+            return ((int) $b['created_at']) <=> ((int) $a['created_at']);
+        });
         return $out;
+    }
+
+    /**
+     * پرونده‌ی کامل یک مشتری — مشخصات، سابقه و همه‌ی نوبت‌ها.
+     * «باشگاه مشتریان»: مدیر قبل از تماس، سابقه‌ی او را می‌بیند.
+     */
+    public static function userDetail(string $id): array
+    {
+        $user = Db::one('SELECT * FROM users WHERE id = ?', [$id]);
+        if (!$user) {
+            Http::fail(404, 'این مشتری پیدا نشد.');
+        }
+
+        $rows = Db::all(
+            'SELECT a.*, s.title AS service_title
+               FROM appointments a
+               LEFT JOIN services s ON s.id = a.service_id
+              WHERE a.user_id = ?
+              ORDER BY a.date DESC, a.time DESC
+              LIMIT 200',
+            [$id]
+        );
+
+        $stats = [
+            'appt_count' => 0, 'pending_count' => 0, 'upcoming_count' => 0,
+            'done_count' => 0, 'no_show_count' => 0, 'cancelled_count' => 0,
+            'total_spent' => 0, 'total_deposit' => 0,
+            'last_visit' => null, 'first_visit' => null,
+        ];
+        $appts = [];
+
+        foreach ($rows as $r) {
+            $pub = Booking::publicRow($r);
+            $stats['appt_count']++;
+            $when = $r['date'] . ' ' . $r['time'];
+            $stats['first_visit'] = $stats['first_visit'] === null
+                ? $when : min($stats['first_visit'], $when);
+
+            switch ($r['status']) {
+                case 'pending':
+                    $stats['pending_count']++;
+                    break;
+                case 'no_show':
+                    $stats['no_show_count']++;
+                    break;
+                case 'cancelled':
+                case 'rejected':
+                    $stats['cancelled_count']++;
+                    break;
+                case 'confirmed':
+                    if ($pub['is_past']) {
+                        $stats['done_count']++;
+                        $stats['total_spent'] += (int) $r['price'];
+                        $stats['last_visit'] = $stats['last_visit'] === null
+                            ? $when : max($stats['last_visit'], $when);
+                    } else {
+                        $stats['upcoming_count']++;
+                    }
+                    break;
+                case 'done':
+                    $stats['done_count']++;
+                    $stats['total_spent'] += (int) $r['price'];
+                    $stats['last_visit'] = $stats['last_visit'] === null
+                        ? $when : max($stats['last_visit'], $when);
+                    break;
+            }
+            if (!empty($r['deposit_amount'])) {
+                $stats['total_deposit'] += (int) $r['deposit_amount'];
+            }
+
+            $appts[] = [
+                'appt'    => $pub,
+                'service' => ['id' => $r['service_id'], 'title' => (string) ($r['service_title'] ?? '')],
+                'variant' => ['id' => $r['variant_key'], 'name' => (string) ($r['variant_name'] ?? '')],
+                'isPast'  => $pub['is_past'],
+            ];
+        }
+
+        return [
+            'user'        => self::publicCustomer(array_merge($user, $stats)),
+            'history'     => self::historyFor([$id])[$id]
+                ?? ['done' => 0, 'noShow' => 0, 'cancelled' => 0, 'isNew' => true, 'suggestDeposit' => false],
+            'appointments' => $appts,
+        ];
+    }
+
+    /** ردیف کاربر + آمار باشگاه، به شکل یکدست برای فهرست و پرونده */
+    private static function publicCustomer(array $r): array
+    {
+        $pub = Auth::publicUser($r);
+        $pub['appt_count']      = (int) ($r['appt_count'] ?? 0);
+        $pub['pending_count']   = (int) ($r['pending_count'] ?? 0);
+        $pub['upcoming_count']  = (int) ($r['upcoming_count'] ?? 0);
+        $pub['done_count']      = (int) ($r['done_count'] ?? 0);
+        $pub['no_show_count']   = (int) ($r['no_show_count'] ?? 0);
+        $pub['cancelled_count'] = (int) ($r['cancelled_count'] ?? 0);
+        $pub['total_spent']     = (int) ($r['total_spent'] ?? 0);
+        $pub['total_deposit']   = (int) ($r['total_deposit'] ?? 0);
+        $pub['last_visit']      = $r['last_visit'] ?? null;
+        $pub['first_visit']     = $r['first_visit'] ?? null;
+        $pub['created_at']      = strtotime((string) $r['created_at']) * 1000;
+        $pub['last_login_at']   = !empty($r['last_login_at'])
+            ? strtotime((string) $r['last_login_at']) * 1000 : null;
+        return $pub;
     }
 
     /** کسانی که امروز تولدشان است */

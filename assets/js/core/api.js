@@ -160,6 +160,9 @@
         var q = new URLSearchParams(params || {}).toString();
         return api.get('/api/admin/users' + (q ? '?' + q : ''));
       },
+      userDetail: function (id) {
+        return api.get('/api/admin/users/' + encodeURIComponent(id));
+      },
       birthdays: function () { return api.get('/api/admin/birthdays'); },
       services: function () { return api.get('/api/admin/services'); },
       updateService: function (id, data) {

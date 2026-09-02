@@ -84,6 +84,71 @@
   }
   function saveBlocks(b) { return store.set(K_BLOCKS, b); }
 
+  /* ---------------- باشگاه مشتریان (حالت محلی) ----------------
+     ساخت کارتِ آمارِ یک مشتری از روی نوبت‌هایش — همان شکلیه که
+     سرور (Admin::users / Admin::userDetail) برمی‌گرداند تا UI
+     هیچ‌وقت نداند داده از کجا آمده. */
+
+  /** آیا امروز تولدِ این کاربر است؟ (مقایسه‌ی ماه/روز شمسی) */
+  function isBirthdayToday(birth) {
+    if (!birth || !birth.m || !birth.d) return false;
+    try {
+      var parts = new Intl.DateTimeFormat('en-u-ca-persian', {
+        month: 'numeric', day: 'numeric'
+      }).formatToParts(new Date());
+      var m = 0, d = 0;
+      parts.forEach(function (p) {
+        if (p.type === 'month') m = parseInt(p.value, 10);
+        if (p.type === 'day') d = parseInt(p.value, 10);
+      });
+      return m === birth.m && d === birth.d;
+    } catch (e) { return false; }
+  }
+
+  /** مشخصات کاربر + آمار سابقه‌اش */
+  function customerStats(usr, appts) {
+    var s = {
+      id: usr.id,
+      phone: usr.phone,
+      name: usr.name || '',
+      birth: usr.birth || null,
+      birthLabel: (usr.birth && u.formatBirth) ? u.formatBirth(usr.birth) : null,
+      isBirthdayToday: isBirthdayToday(usr.birth),
+      role: usr.role || 'user',
+      createdAt: usr.createdAt || null,
+      lastLoginAt: usr.lastLoginAt || null,
+      apptCount: 0, pendingCount: 0, upcomingCount: 0, doneCount: 0,
+      noShowCount: 0, cancelledCount: 0,
+      totalSpent: 0, totalDeposit: 0,
+      lastVisit: null, firstVisit: null
+    };
+
+    (appts || []).forEach(function (a) {
+      s.apptCount++;
+      var when = a.date + ' ' + a.time;
+      if (s.firstVisit === null || when < s.firstVisit) s.firstVisit = when;
+      if (a.deposit && a.deposit.amount) s.totalDeposit += a.deposit.amount;
+
+      switch (a.status) {
+        case 'pending': s.pendingCount++; break;
+        case 'no_show': s.noShowCount++; break;
+        case 'cancelled':
+        case 'rejected': s.cancelledCount++; break;
+        case 'confirmed':
+        case 'done':
+          if (u.isPast(a.date, a.time)) {
+            s.doneCount++;
+            s.totalSpent += a.price || 0;
+            if (s.lastVisit === null || when > s.lastVisit) s.lastVisit = when;
+          } else {
+            s.upcomingCount++;
+          }
+          break;
+      }
+    });
+    return s;
+  }
+
   var appointments = {
 
     /* ---------------- روزهای قابل رزرو ---------------- */
@@ -546,6 +611,66 @@
           revenue: revenue,
           deposits: deposits,
           users: Object.keys(users).length
+        };
+      },
+
+      /* ---------------- باشگاه مشتریان ----------------
+         همان قراردادی که backend-bridge برای سرور برمی‌گرداند:
+         فهرست کارت‌های مشتری + پرونده‌ی کامل هر کدام. این نسخه
+         از داده‌ی محلی (users + appointments) ساخته می‌شود تا
+         پیش‌نمایش و تست‌ها همیشه کار کنند. */
+
+      users: function (filter) {
+        var users = ZZ.auth.allUsers ? ZZ.auth.allUsers() : {};
+        var list = all();
+        var q = filter && filter.q ? u.toEn(String(filter.q)).toLowerCase().trim() : '';
+
+        var out = Object.keys(users).map(function (id) {
+          return customerStats(users[id], list.filter(function (a) {
+            return a.userId === id;
+          }));
+        });
+
+        if (q) {
+          out = out.filter(function (c) {
+            return (c.name || '').toLowerCase().indexOf(q) > -1 ||
+                   (c.phone || '').indexOf(q) > -1;
+          });
+        }
+
+        /* فعال‌ترین مشتری اول؛ بعدِ او تازه‌ترین عضو */
+        out.sort(function (a, b) {
+          if ((a.lastVisit || '') !== (b.lastVisit || '')) {
+            return (b.lastVisit || '').localeCompare(a.lastVisit || '');
+          }
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        return out;
+      },
+
+      userDetail: function (id) {
+        var users = ZZ.auth.allUsers ? ZZ.auth.allUsers() : {};
+        var usr = users[id];
+        if (!usr) return null;
+
+        var mine = all().filter(function (a) { return a.userId === id; });
+
+        return {
+          user: customerStats(usr, mine),
+          history: appointments.admin.userHistory(id),
+          appointments: mine
+            .slice()
+            .sort(function (x, y) {
+              return (y.date + ' ' + y.time).localeCompare(x.date + ' ' + x.time);
+            })
+            .map(function (a) {
+              return {
+                appt: a,
+                service: ZZ.services.getById(a.serviceId) || null,
+                variant: ZZ.services.getVariant(a.serviceId, a.variantId) || null,
+                isPast: u.isPast(a.date, a.time)
+              };
+            })
         };
       },
 
