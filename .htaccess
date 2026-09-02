@@ -10,7 +10,7 @@ AddDefaultCharset UTF-8
 # --------------------------------------------------------------------------
 # ۱) انتقال به HTTPS و حذف www
 #
-#  ⚠️ مهم: این بخش عمداً غیرفعال (کامنت) است.
+#  SSL دامنه فعال است (AutoSSL)؛ لذا این بخش روشن شده است.
 #  اول در cPanel بخش «SSL/TLS Status» گواهی AutoSSL را برای دامنه فعال کنید
 #  و مطمئن شوید https://zohrezare.ir بالا می‌آید؛ بعد ۶ خط زیر را از حالت
 #  کامنت خارج کنید (علامت # ابتدای خط‌ها را بردارید).
@@ -19,12 +19,12 @@ AddDefaultCharset UTF-8
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
-# RewriteCond %{HTTPS} !=on
-# RewriteCond %{HTTP:X-Forwarded-Proto} !https
-# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-# RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 </IfModule>
 
 # --------------------------------------------------------------------------

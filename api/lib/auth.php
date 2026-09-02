@@ -351,6 +351,10 @@ final class Auth
             'birth_label'        => Jalali::birthLabel($y, $m, $d),
             'is_birthday_today'  => Jalali::isBirthdayToday($m, $d),
             'role'               => $u['role'] ?? 'user',
+            /* تاریخ عضویت (میلی‌ثانیه) — پنل کاربری «عضویت از» را نشان می‌دهد */
+            'member_since'       => !empty($u['created_at'])
+                ? strtotime((string) $u['created_at']) * 1000
+                : null,
         ];
     }
 }

@@ -1,18 +1,15 @@
 /* ==========================================================================
-   pwa.js - Service Worker Registration for PWA
+   pwa.js — ثبت سرویس‌ورکر برای PWA
    ========================================================================== */
 (function () {
   'use strict';
-  
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(function (registration) {
-          console.log('[PWA] Service Worker registered successfully. Scope:', registration.scope);
-        })
-        .catch(function (error) {
-          console.log('[PWA] Service Worker registration failed:', error);
-        });
+      navigator.serviceWorker.register('./service-worker.js').catch(function () {
+        /* اگر ثبت نشد، سایت عادی کار می‌کند؛ بی‌صدا رد می‌شویم
+           تا کنسول بازدیدکننده تمیز بماند. */
+      });
     });
   }
 })();

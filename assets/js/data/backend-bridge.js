@@ -35,7 +35,9 @@
       birth: u0.birth || null,
       birthLabel: u0.birth_label || null,
       isBirthdayToday: !!u0.is_birthday_today,
-      role: u0.role || 'user'
+      role: u0.role || 'user',
+      /* تاریخ عضویت از سرور (میلی‌ثانیه) — برای «عضویت از» در پنل کاربری */
+      createdAt: u0.member_since || null
     };
   }
 

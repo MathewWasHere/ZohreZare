@@ -5,5 +5,8 @@
   "dependencies": {
     "jsdom": "^30.0.1",
     "php-parser": "^3.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

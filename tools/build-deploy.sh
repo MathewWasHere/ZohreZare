@@ -159,6 +159,26 @@ for img in sorted((dist / "assets" / "img").rglob("*")):
 print(f"    {removed} فایل بلااستفاده حذف شد ({freed/1024/1024:.2f}MB)")
 PY
 
+echo "==> فشرده‌سازی JS و CSS برای پروداکشن (esbuild)"
+# سورس‌ها در مخزن خوانا می‌مانند؛ فقط داخل بسته‌ی آپلود فشرده می‌شوند.
+# اگر esbuild نبود (npm ci در tools/ اجرا نشده)، بسته بدون فشرده‌سازی
+# ساخته می‌شود — چیزی خراب نمی‌شود، فقط کمی بزرگ‌تر است.
+ESBUILD="$ROOT/tools/node_modules/.bin/esbuild"
+if [ -x "$ESBUILD" ]; then
+  (
+    cd "$DIST" || exit 1
+    find assets/js -name '*.js' -print0 |
+      xargs -0 -r "$ESBUILD" --minify --allow-overwrite --outdir=assets/js
+    find assets/css -name '*.css' -print0 |
+      xargs -0 -r "$ESBUILD" --minify --allow-overwrite --outdir=assets/css
+  )
+  echo "    انجام شد؛ اعتبارسنجی سینتکس:"
+  find "$DIST/assets/js" -name '*.js' -print0 | xargs -0 -r node --check &&
+    echo "    همه‌ی فایل‌های JS سالم‌اند"
+else
+  echo "    هشدار: esbuild موجود نیست — بدون فشرده‌سازی ادامه می‌دهیم"
+fi
+
 echo "==> حذف پوشه‌های خالی"
 find "$DIST" -type d -empty -delete -print | sed "s|$DIST|    -|"
 
