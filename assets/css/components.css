@@ -71,11 +71,82 @@
 }
 .btn--quiet:hover { color: var(--ink-900); }
 
+/* دکمه‌ی مخرب — تأیید عملیات برگشت‌ناپذیر در پنجره‌های گفت‌وگو */
+.btn--danger {
+  background: var(--danger-500);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.btn--danger:hover { background: #93392F; color: #fff; }
+
+/* دکمه‌ی تماس — سبز؛ عمل مثبتِ پرتکرار مدیر */
+.btn--call {
+  background: var(--success-500);
+  color: #fff;
+}
+.btn--call:hover { background: #3D6543; color: #fff; }
+
 .btn--block { width: 100%; }
 .btn--sm { padding: 0.55rem 1.1rem; font-size: var(--fs-sm); }
 .btn--lg { padding: 0.95rem 2rem; font-size: var(--fs-md); }
 
 .btn__icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ---------- دکمه‌ی فقط-آیکون (حداقل ۴۴px لمس‌پذیر) ---------- */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.icon-btn:hover { border-color: var(--rose-400); color: var(--ink-900); }
+.icon-btn:disabled { opacity: 0.45; pointer-events: none; }
+
+/* ---------- چیپ‌های انتخابی (مثلاً دلایل آماده‌ی رد) ---------- */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--bg-elevated);
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.chip:hover { border-color: var(--rose-400); color: var(--ink-900); }
+.chip.is-active {
+  background: var(--danger-50);
+  border-color: var(--danger-500);
+  color: var(--danger-500);
+}
+
+/* ---------- اسکلت بارگذاری ---------- */
+.skel {
+  display: block;
+  border-radius: var(--r-sm);
+  background: linear-gradient(100deg, var(--cream-100) 40%, var(--cream-200) 50%, var(--cream-100) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; }
+}
 
 /* حالت لودینگ */
 .btn.is-loading { position: relative; color: transparent !important; pointer-events: none; }

@@ -1,13 +1,15 @@
 /* ==========================================================================
-   admin.js — پنل مدیریت (panel/admin)
+   admin.js — پنل مدیریت (panel/admin) — بازطراحی موبایل‌محور
 
    قابلیت‌ها:
-   • مشاهده‌ی همه‌ی نوبت‌ها با فیلتر و جست‌وجو
-   • دیدن شماره تماس و تاریخ تولد هر مراجعه‌کننده کنار نوبتش
-   • تماس مستقیم با کلیک روی شماره (tel:) — روی موبایل شماره‌گیر باز می‌شود
-   • تعطیل کردن یک روز کامل
-   • پر کردن دستی یک بازه‌ی زمانی
-   • لغو نوبت (بدون محدودیت ۲۴ ساعته)
+   • ناوبری پایین‌صفحه (dock) در موبایل + سایدبار ثابت در دسکتاپ
+   • مشاهده‌ی همه‌ی نوبت‌ها با فیلتر و جست‌وجو + اسکلت بارگذاری
+   • کارت‌های آماریِ کلیک‌پذیر (پرش مستقیم به فهرست/برنامه‌ی روز)
+   • تقویم ماهانه‌ی شمسی برای مدیریت روزها + برنامه‌ی روز با نام
+     مراجعه‌کننده‌ها و تماس یک‌لمسی
+   • پنجره‌های گفت‌وگوی هماهنگ با طراحی (جایگزین prompt/confirm بومی):
+     رد درخواست با دلایل آماده، تأیید لغو/غیبت/خروج، ثبت بیعانه
+   • تعطیل کردن روز، پر کردن دستی بازه، لغو نوبت بدون محدودیت ۲۴ ساعته
 
    ⚠️ امنیت: گارد نقش اینجا فقط سمت کلاینت است. وقتی به سرور وصل شد،
    هر endpoint باید نقش را دوباره بررسی کند.
@@ -23,6 +25,24 @@
   /* این صفحه در panel/admin/ است */
   var B = '../../';
 
+  /* بخش‌های پنل — هم برای dock موبایل هم سایدبار دسکتاپ */
+  var TABS = [
+    { id: 'appointments', label: 'نوبت‌ها',       short: 'نوبت‌ها',  icon: 'calendarDays' },
+    { id: 'days',         label: 'روزها و ساعت‌ها', short: 'روزها',   icon: 'clock' },
+    { id: 'services',     label: 'خدمات و محتوا',  short: 'خدمات',  icon: 'tag' }
+  ];
+
+  /* دلایل آماده‌ی رد — ۸۰٪ مواقع مدیر با همین‌ها جواب می‌دهد */
+  var REJECT_REASONS = [
+    'در این ساعت امکان پذیرش نبود',
+    'ظرفیت این روز تکمیل است',
+    'این خدمت فعلاً ارائه نمی‌شود',
+    'برای هماهنگی ساعت دیگر با شما تماس می‌گیریم'
+  ];
+
+  /* سرِ هفته‌ی فارسی: شنبه…جمعه */
+  var J_WEEK = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+
   var state = {
     tab: 'appointments',   // appointments | days | services
     /* پیش‌فرض روی صف درخواست‌هاست: اولین چیزی که مدیر باید ببیند
@@ -30,6 +50,7 @@
     filter: 'pending',     // pending | upcoming | past | cancelled | all
     q: '',
     selectedDay: null,
+    calIndex: 0,           // کدام ماهِ تقویم باز است
     services: null,        // کش خدمات برای تب ویرایش
     editingId: null,       // خدمتی که باز است
     /* شماره‌ی بخش‌هایی از ویرایشگر خدمت که کاربر بسته است.
@@ -93,6 +114,85 @@
     render();
   }
 
+  /** اجرای یک عمل که ممکن است هم‌گام یا ناهم‌گام باشد */
+  function run(result, onOk) {
+    if (isThenable(result)) {
+      result.then(function (v) { onOk(v); })
+            .catch(function (err) {
+              ZZ.toast.error((err && err.message) || 'عملیات ناموفق بود.');
+            });
+    } else {
+      onOk(result);
+    }
+  }
+
+  /* ---------------- پنجره‌های گفت‌وگو ----------------
+     همه‌ی تصمیم‌های مخرب (رد، لغو، غیبت، خروج) از همین‌جا می‌گذرند.
+     dialog.js فوکوس‌ترپ، Esc، قفل اسکرول و برگشت فوکوس را مدیریت می‌کند. */
+
+  /**
+   * پنجره‌ی رد درخواست — دلایل آماده + متن آزاد.
+   * جایگزین prompt() بومی که با طراحی سایت نمی‌خواند.
+   */
+  function openRejectDialog(apptId) {
+    var reason = REJECT_REASONS[0];
+
+    ZZ.dialog.open({
+      title: 'رد این درخواست',
+      hint: 'دلیل رد به مراجعه‌کننده نشان داده می‌شود و ساعتِ او فوراً آزاد می‌شود.',
+      body:
+        '<div class="chip-row" id="rejChips" role="group" aria-label="دلایل آماده">' +
+          REJECT_REASONS.map(function (r, i) {
+            return '<button type="button" class="chip' + (i === 0 ? ' is-active' : '') +
+              '" data-reason="' + u.esc(r) + '">' + u.esc(r) + '</button>';
+          }).join('') +
+        '</div>' +
+        '<label class="field" style="margin:var(--sp-4) 0 0;">' +
+          '<span class="field__label">دلیل رد</span>' +
+          '<textarea class="input" id="rejReason" rows="3" maxlength="200">' +
+            u.esc(REJECT_REASONS[0]) + '</textarea>' +
+        '</label>',
+      confirmLabel: 'رد درخواست',
+      danger: true,
+      onMount: function (host) {
+        var chips = host.querySelector('#rejChips');
+        chips.addEventListener('click', function (ev) {
+          var chip = ev.target.closest('[data-reason]');
+          if (!chip) return;
+          u.$$('.chip', chips).forEach(function (c) { c.classList.remove('is-active'); });
+          chip.classList.add('is-active');
+          host.querySelector('#rejReason').value = chip.dataset.reason;
+        });
+      },
+      onConfirm: function (host) {
+        var t = host.querySelector('#rejReason').value.trim();
+        if (!t) {
+          ZZ.toast.error('دلیل رد را بنویسید یا یکی از گزینه‌ها را انتخاب کنید.');
+          return false;
+        }
+        reason = t;
+        return true;
+      }
+    }).then(function (ok) {
+      if (!ok) return;
+      run(A.reject(apptId, reason), function (res) {
+        if (!res) { ZZ.toast.error('این درخواست دیگر در انتظار تأیید نیست.'); }
+        else { ZZ.toast.ok('درخواست رد شد و ساعت آزاد شد'); }
+        afterChange();
+      });
+    });
+  }
+
+  /** پنجره‌ی تأیید مخرب — هم‌ارز confirm() بومی */
+  function confirmDanger(opts) {
+    return ZZ.dialog.confirm({
+      title: opts.title,
+      message: opts.message,
+      confirmLabel: opts.confirmLabel || 'بله، انجام بده',
+      danger: true
+    });
+  }
+
   /**
    * پنجره‌ی ثبت بیعانه.
    *
@@ -108,18 +208,15 @@
     var appt = row ? row.appt : null;
     var dcfg = ZZ.config.deposit;
     var current = (appt && appt.deposit) || null;
+    var payload = {};
 
-    var host = u.el('div', { class: 'modal-host', id: 'depositModal' });
-    host.innerHTML =
-      '<div class="modal-back" data-close="1"></div>' +
-      '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="depTitle">' +
-        '<h3 id="depTitle" class="modal__title">ثبت بیعانه‌ی دریافت‌شده</h3>' +
-        '<p class="modal__hint">' +
-          (row && row.user
-            ? u.esc(row.user.name || 'بدون نام') + ' — ' +
-              '<span class="ltr">' + u.esc(row.user.phone || '') + '</span>'
-            : '') +
-        '</p>' +
+    ZZ.dialog.open({
+      title: current ? 'ویرایش بیعانه' : 'ثبت بیعانه‌ی دریافت‌شده',
+      hint: (row && row.user
+        ? u.esc(row.user.name || 'بدون نام') + ' — ' +
+          '<span class="ltr">' + u.esc(row.user.phone || '') + '</span>'
+        : ''),
+      body:
         '<label class="field"><span class="field__label">مبلغ (' + CUR + ')</span>' +
           '<input class="input" id="depAmount" type="text" inputmode="numeric" ' +
             'value="' + (current ? current.amount : (dcfg.suggested || '')) + '"></label>' +
@@ -132,73 +229,49 @@
           '</select></label>' +
         '<label class="field"><span class="field__label">کد پیگیری / چهار رقم آخر کارت (اختیاری)</span>' +
           '<input class="input ltr" id="depRef" type="text" ' +
-            'value="' + u.esc(current ? current.ref || '' : '') + '"></label>' +
-        '<div class="modal__actions">' +
-          (current
-            ? '<button class="btn btn--quiet btn--sm" data-clear="1">حذف بیعانه</button>'
-            : '') +
-          '<span style="flex:1;"></span>' +
-          '<button class="btn btn--ghost btn--sm" data-close="1">انصراف</button>' +
-          '<button class="btn btn--primary btn--sm" data-save="1">ثبت</button>' +
-        '</div>' +
-      '</div>';
+            'value="' + u.esc(current ? current.ref || '' : '') + '"></label>',
+      extra: current
+        ? '<button type="button" class="btn btn--quiet btn--sm" data-clear="1">حذف بیعانه</button>'
+        : '',
+      confirmLabel: 'ثبت',
+      onMount: function (host, api) {
+        var amountInput = host.querySelector('#depAmount');
+        amountInput.focus();
+        amountInput.select();
 
-    document.body.appendChild(host);
-    var amountInput = host.querySelector('#depAmount');
-    amountInput.focus();
-    amountInput.select();
-
-    function close() {
-      if (host.parentNode) host.parentNode.removeChild(host);
-      document.removeEventListener('keydown', onKey);
-    }
-    function onKey(ev) { if (ev.key === 'Escape') close(); }
-    document.addEventListener('keydown', onKey);
-
-    host.addEventListener('click', function (ev) {
-      if (ev.target.closest('[data-close]')) { close(); return; }
-
-      if (ev.target.closest('[data-clear]')) {
-        close();
+        host.addEventListener('click', function (ev) {
+          if (ev.target.closest('[data-clear]')) api.close('clear');
+        });
+      },
+      onConfirm: function (host) {
+        payload = {
+          amount: host.querySelector('#depAmount').value,
+          method: host.querySelector('#depMethod').value,
+          ref: host.querySelector('#depRef').value
+        };
+        /* همان اعتبارسنجیِ لایه‌ی داده — اینجا تا کاربر درست وارد
+           نکند پنجره بسته نمی‌شود. */
+        var amt = parseInt(u.toEn(String(payload.amount)).replace(/\D/g, ''), 10);
+        if (!amt || amt <= 0) {
+          ZZ.toast.error('مبلغ بیعانه را درست وارد کنید.');
+          return false;
+        }
+        return true;
+      }
+    }).then(function (res) {
+      if (res === 'clear') {
         run(A.clearDeposit(apptId), function () {
           ZZ.toast.ok('بیعانه حذف شد');
           afterChange();
         });
         return;
       }
-
-      if (ev.target.closest('[data-save]')) {
-        var payload = {
-          amount: host.querySelector('#depAmount').value,
-          method: host.querySelector('#depMethod').value,
-          ref: host.querySelector('#depRef').value
-        };
-        var res;
-        try {
-          res = A.setDeposit(apptId, payload);
-        } catch (err) {
-          ZZ.toast.error(err.message);
-          return;
-        }
-        close();
-        run(res, function () {
-          ZZ.toast.ok('بیعانه ثبت شد');
-          afterChange();
-        });
-      }
+      if (res !== true) return;
+      run(A.setDeposit(apptId, payload), function () {
+        ZZ.toast.ok('بیعانه ثبت شد');
+        afterChange();
+      });
     });
-  }
-
-  /** اجرای یک عمل که ممکن است هم‌گام یا ناهم‌گام باشد */
-  function run(result, onOk) {
-    if (isThenable(result)) {
-      result.then(function (v) { onOk(v); })
-            .catch(function (err) {
-              ZZ.toast.error((err && err.message) || 'عملیات ناموفق بود.');
-            });
-    } else {
-      onOk(result);
-    }
   }
 
   /* ---------------- کمکی‌ها ---------------- */
@@ -223,7 +296,8 @@
       var lbl = user.birth_label || user.birthLabel;
       var isB = user.is_birthday_today || user.isBirthdayToday;
       return '<span class="admin-cell__birth">' +
-               (isB ? '\uD83C\uDF82 ' : '') + u.esc(lbl) +
+               (isB ? '<span class="birth-ico" title="امروز تولد اوست">' + ZZ.icon('cake', null, 14) + '</span>' : '') +
+               u.esc(lbl) +
              '</span>';
     }
 
@@ -246,8 +320,35 @@
     } catch (e) { /* noop */ }
 
     return '<span class="admin-cell__birth">' +
-             (isBirthday ? '\uD83C\uDF82 ' : '') + u.formatBirth(b) +
+             (isBirthday ? '<span class="birth-ico" title="امروز تولد اوست">' + ZZ.icon('cake', null, 14) + '</span>' : '') +
+             u.formatBirth(b) +
            '</span>';
+  }
+
+  /* ---------------- اسکلت بارگذاری ----------------
+     به‌جای متنِ «در حال بارگذاری…» — جای واقعی محتوا را نگه
+     می‌دارد تا صفحه نپرد و حس سرعت بدهد. */
+
+  function skeletonAppts() {
+    var card =
+      '<div class="skel-card" aria-hidden="true">' +
+        '<div class="skel-row"><span class="skel skel--chip"></span><span class="skel skel--chip"></span></div>' +
+        '<span class="skel skel--line"></span>' +
+        '<span class="skel skel--line skel--sm"></span>' +
+        '<div class="skel-row"><span class="skel skel--btn"></span><span class="skel skel--btn"></span></div>' +
+      '</div>';
+    return '<div class="admin-list" aria-busy="true">' + card + card + card + '</div>';
+  }
+
+  function skeletonSlots() {
+    var cell = '<span class="skel skel--slot"></span>';
+    return '<div class="admin-slots" aria-busy="true">' + cell + cell + cell + cell + cell + cell + '</div>';
+  }
+
+  function skeletonCal() {
+    var cells = '';
+    for (var i = 0; i < 28; i++) cells += '<span class="skel skel--day"></span>';
+    return '<div class="cal-grid" aria-busy="true">' + cells + '</div>';
   }
 
   /* ---------------- تب نوبت‌ها ---------------- */
@@ -273,21 +374,23 @@
     if (a.status === 'pending') {
       if (r.user && r.user.phone) {
         var tel = 'tel:' + u.normalizePhone(r.user.phone).replace(/^0/, '+98');
-        btns.push('<a class="btn btn--ghost btn--sm" href="' + tel + '">' +
+        btns.push('<a class="btn btn--call btn--sm" href="' + tel + '">' +
                   ZZ.icon('phone', null, 14) + 'تماس</a>');
       }
       btns.push('<button class="btn btn--ghost btn--sm" data-deposit="' + a.id + '">' +
-                (a.deposit ? 'ویرایش بیعانه' : 'ثبت بیعانه') + '</button>');
-      btns.push('<button class="btn btn--primary btn--sm" data-approve="' + a.id + '">تأیید</button>');
+                (a.deposit ? 'بیعانه' : 'ثبت بیعانه') + '</button>');
+      btns.push('<button class="btn btn--primary btn--sm" data-approve="' + a.id + '">' +
+                ZZ.icon('check', null, 15) + 'تأیید</button>');
       btns.push('<button class="btn btn--quiet btn--sm" data-reject="' + a.id + '">رد</button>');
     } else if (a.status === 'confirmed' && !r.isPast) {
       btns.push('<button class="btn btn--ghost btn--sm" data-deposit="' + a.id + '">' +
-                (a.deposit ? 'ویرایش بیعانه' : 'ثبت بیعانه') + '</button>');
+                (a.deposit ? 'بیعانه' : 'ثبت بیعانه') + '</button>');
       if (canCancel) {
         btns.push('<button class="btn btn--quiet btn--sm" data-cancel="' + a.id + '">لغو</button>');
       }
     } else if (a.status === 'confirmed' && r.isPast) {
-      btns.push('<button class="btn btn--ghost btn--sm" data-done="' + a.id + '">انجام شد</button>');
+      btns.push('<button class="btn btn--ghost btn--sm" data-done="' + a.id + '">' +
+                ZZ.icon('check', null, 15) + 'انجام شد</button>');
       btns.push('<button class="btn btn--quiet btn--sm" data-noshow="' + a.id + '">غیبت کرد</button>');
     }
 
@@ -315,8 +418,7 @@
     }, null);
 
     if (rows === null) {
-      return '<div class="note">' + ZZ.icon('info') +
-             '<span>در حال بارگذاری نوبت‌ها…</span></div>';
+      return skeletonAppts();
     }
 
     if (!rows.length) {
@@ -394,39 +496,175 @@
     return '<div class="admin-list">' + body + '</div>';
   }
 
-  /* ---------------- تب مدیریت روزها ---------------- */
+  /* ---------------- تقویم شمسی (تب روزها) ---------------- */
+
+  var J_FMT = null;
+
+  /** تبدیل Date به (سال، ماه، روز) شمسی — همان روش tools/check-jalali.js */
+  function jParts(d) {
+    if (!J_FMT) {
+      J_FMT = new Intl.DateTimeFormat('en-u-ca-persian', {
+        year: 'numeric', month: 'numeric', day: 'numeric'
+      });
+    }
+    var o = {};
+    J_FMT.formatToParts(d).forEach(function (p) {
+      if (p.type === 'year' || p.type === 'month' || p.type === 'day') {
+        o[p.type] = parseInt(p.value, 10);
+      }
+    });
+    return { y: o.year || 0, m: o.month || 0, d: o.day || 0 };
+  }
+
+  /** شماره‌ی روز هفته به سبک فارسی: شنبه=۰ … جمعه=۶ */
+  function pWeek(d) { return (d.getDay() + 1) % 7; }
+
+  /** گروه‌بندی روزها بر اساس ماه شمسی */
+  function monthGroups(days) {
+    var groups = [];
+    days.forEach(function (d) {
+      var jp = jParts(d.date);
+      var g = groups[groups.length - 1];
+      if (g && g.y === jp.y && g.m === jp.m) { g.days.push(d); return; }
+      groups.push({ y: jp.y, m: jp.m, label: u.jMonths[jp.m - 1] || '', days: [d] });
+    });
+    return groups;
+  }
+
+  /** نام و شماره‌ی مشتریِ یک بازه‌ی رزروشده — هم حالت سرور هم محلی */
+  function slotCustomer(s) {
+    if (s.customer && s.customer.name) return s.customer.name;
+    if (s.appt && ZZ.auth.allUsers) {
+      var usr = (ZZ.auth.allUsers() || {})[s.appt.userId];
+      if (usr && usr.name) return usr.name;
+    }
+    return null;
+  }
+
+  function slotPhone(s) {
+    if (s.customer && s.customer.phone) return s.customer.phone;
+    if (s.appt && ZZ.auth.allUsers) {
+      var usr = (ZZ.auth.allUsers() || {})[s.appt.userId];
+      if (usr) return usr.phone || null;
+    }
+    return null;
+  }
+
+  function slotHTML(s) {
+    /* بازه‌ی رزروشده: کارت با نام مراجعه‌کننده — لمس یعنی تماس */
+    if (s.booked) {
+      var cust = slotCustomer(s);
+      var phone = slotPhone(s);
+      if (phone) {
+        var href = 'tel:' + u.normalizePhone(phone).replace(/^0/, '+98');
+        return '<a class="admin-slot is-booked" href="' + href + '" ' +
+          'title="' + u.esc(cust || 'رزرو شده') + ' — تماس">' +
+          '<span class="admin-slot__time">' + u.toFa(s.time) + '</span>' +
+          '<span class="admin-slot__state">' +
+            '<strong>' + u.esc(cust || 'رزرو شده') + '</strong>' +
+            '<small>' + ZZ.icon('phone', null, 11) + 'برای تماس بزنید</small>' +
+          '</span>' +
+        '</a>';
+      }
+      return '<div class="admin-slot is-booked">' +
+        '<span class="admin-slot__time">' + u.toFa(s.time) + '</span>' +
+        '<span class="admin-slot__state"><strong>' + u.esc(cust || 'رزرو شده') + '</strong></span>' +
+      '</div>';
+    }
+
+    var blocked = s.blocked;
+    return '<button type="button" class="admin-slot' + (blocked ? ' is-blocked' : '') +
+      '" data-slot="' + s.time + '" aria-pressed="' + (blocked ? 'true' : 'false') + '">' +
+      '<span class="admin-slot__time">' + u.toFa(s.time) + '</span>' +
+      '<span class="admin-slot__state">' + (blocked ? 'پر (دستی)' : 'آزاد') + '</span>' +
+    '</button>';
+  }
 
   function renderDays() {
-    var days = ZZ.appointments.getDays(21);
+    /* تقویم مستقیم خوانده می‌شود (نه با pull) — در حالت سرور اول
+       خالی می‌آید و رویداد zz:calendar بعداً دوباره رندر می‌کند. */
+    var days = ZZ.appointments.getDays(60);
 
-    /* در حالت سرور، تقویم ناهم‌گام می‌آید؛ تا آن موقع پیام بارگذاری
-       نشان بده (رویداد zz:calendar بعداً دوباره رندر می‌کند). */
     if (!days || !days.length) {
-      return '<div class="note">' + ZZ.icon('info') +
-             '<span>در حال بارگذاری تقویم…</span></div>';
+      return '<div class="day-manage">' +
+        '<div class="cal-card"><div class="cal-head"><span class="skel skel--chip"></span></div>' + skeletonCal() + '</div>' +
+        '<div>' + skeletonSlots() + '</div>' +
+      '</div>';
     }
 
-    if (!state.selectedDay) {
-      var firstOpen = days.filter(function (d) { return d.date.getDay() !== 5; })[0];
-      state.selectedDay = firstOpen ? firstOpen.key : days[0].key;
+    var todayKey = u.dateKey(new Date());
+
+    /* روزِ انتخاب‌شده معتبر نیست؟ برگرد به امروز */
+    var hasSel = days.some(function (d) { return d.key === state.selectedDay; });
+    if (!state.selectedDay || !hasSel) {
+      state.selectedDay = todayKey;
+      state.calIndex = 0;
     }
 
-    var dayList = days.map(function (d) {
+    var groups = monthGroups(days);
+    var gi = Math.max(0, Math.min(state.calIndex || 0, groups.length - 1));
+    state.calIndex = gi;
+    var g = groups[gi];
+
+    /* ---- خانه‌های تقویم ---- */
+    var cells = '';
+    var lead = pWeek(g.days[0].date);
+    for (var b = 0; b < lead; b++) {
+      cells += '<span class="cal-cell cal-cell--blank" aria-hidden="true"></span>';
+    }
+
+    g.days.forEach(function (d) {
+      var jp = jParts(d.date);
       var weekly = d.date.getDay() === 5;
-      var cls = 'day-item' +
-        (d.key === state.selectedDay ? ' is-active' : '') +
-        (d.closed ? ' is-closed' : '');
-      var sub = weekly ? 'تعطیل هفتگی' : (d.closedByAdmin ? 'شما بسته‌اید' : d.short);
-      return '<button type="button" class="' + cls + '" data-day="' + d.key + '"' +
-               (weekly ? ' disabled' : '') + '>' +
-               '<span>' +
-                 '<span class="day-item__main">' + u.esc(d.label) + '</span><br>' +
-                 '<span class="day-item__sub">' + u.esc(sub) + '</span>' +
-               '</span>' +
-               (d.closed ? ZZ.icon('x', null, 16) : ZZ.icon('chevronLeft', null, 16)) +
-             '</button>';
-    }).join('');
+      var isSel = d.key === state.selectedDay;
+      var isToday = d.key === todayKey;
+      var adminClosed = !!d.closedByAdmin;
+      var full = !weekly && !adminClosed && !ZZ.appointments.hasOpenSlot(d.key, null);
 
+      var cls = 'cal-cell';
+      if (adminClosed) cls += ' is-closed';
+      if (weekly) cls += ' is-weekly';
+      if (full && !isSel) cls += ' is-full';
+      if (isToday) cls += ' is-today';
+      if (isSel) cls += ' is-selected';
+
+      var dot = adminClosed
+        ? '<span class="cal-dot cal-dot--closed" aria-hidden="true"></span>'
+        : (full ? '<span class="cal-dot cal-dot--full" aria-hidden="true"></span>' : '');
+
+      var aria = u.esc(u.faDayLabel(d.date) + ' ' + u.toFa(jp.d) + ' ' + g.label) +
+        (adminClosed ? ' — تعطیل' : (weekly ? ' — تعطیل هفتگی' : (full ? ' — تکمیل' : '')));
+
+      cells += '<button type="button" class="' + cls + '" data-day="' + d.key + '"' +
+        (isSel ? ' aria-current="date"' : '') + ' aria-label="' + aria + '">' +
+        '<span class="cal-cell__num">' + u.toFa(jp.d) + '</span>' + dot +
+      '</button>';
+    });
+
+    var calHead =
+      '<div class="cal-head">' +
+        '<button type="button" class="icon-btn cal-nav" data-cal="-1" aria-label="ماه قبل"' +
+          (gi === 0 ? ' disabled' : '') + '>' + ZZ.icon('chevronRight', null, 18) + '</button>' +
+        '<h4 class="cal-title" aria-live="polite">' + u.esc(g.label) + ' ' + u.toFa(g.y) + '</h4>' +
+        '<button type="button" class="icon-btn cal-nav" data-cal="1" aria-label="ماه بعد"' +
+          (gi >= groups.length - 1 ? ' disabled' : '') + '>' + ZZ.icon('chevronLeft', null, 18) + '</button>' +
+      '</div>';
+
+    var cal =
+      '<div class="cal-card">' +
+        calHead +
+        '<div class="cal-grid cal-grid--head" aria-hidden="true">' +
+          J_WEEK.map(function (w) { return '<span class="cal-cell cal-cell--week">' + w + '</span>'; }).join('') +
+        '</div>' +
+        '<div class="cal-grid">' + cells + '</div>' +
+        '<div class="cal-legend">' +
+          '<span><span class="cal-dot cal-dot--closed"></span>تعطیل</span>' +
+          '<span><span class="cal-dot cal-dot--full"></span>ظرفیت تکمیل</span>' +
+          '<span><span class="cal-dot cal-dot--today"></span>امروز</span>' +
+        '</div>' +
+      '</div>';
+
+    /* ---- جزئیات روز انتخاب‌شده ---- */
     var sel = state.selectedDay;
     var selDate = u.fromKey(sel);
     var isWeeklyOff = selDate.getDay() === 5;
@@ -444,58 +682,44 @@
         '<span>جمعه‌ها تعطیلی ثابت است و در تنظیمات سالن تعریف شده.</span></div>';
     } else if (isClosed) {
       slotsHTML = '<div class="note note--danger">' + ZZ.icon('alert') +
-        '<span>این روز را تعطیل کرده‌اید. برای باز کردن دوباره، دکمه‌ی بالا را بزنید.</span></div>';
+        '<span>این روز را تعطیل کرده‌اید. برای باز کردن دوباره، دکمه‌ی روبه‌رو را بزنید.</span></div>';
     } else {
       var slots = pull('slots:' + sel, function () { return A.daySlots(sel); }, null);
 
       if (slots === null) {
-        return dayManageShell(dayList, selDate, isWeeklyOff, isClosed,
-          '<div class="note">' + ZZ.icon('info') +
-          '<span>در حال بارگذاری ساعت‌ها…</span></div>');
-      }
+        slotsHTML = skeletonSlots();
+      } else {
+        var booked = slots.filter(function (s) { return s.booked; }).length;
+        var open = slots.filter(function (s) { return !s.booked && !s.blocked; }).length;
 
-      slotsHTML = '<div class="admin-slots">' + slots.map(function (s) {
-        var cls = 'admin-slot' +
-          (s.booked ? ' is-booked' : '') +
-          (s.blocked && !s.booked ? ' is-blocked' : '');
-        var label = s.booked ? 'رزرو شده' : (s.blocked ? 'پر (دستی)' : 'آزاد');
-        return '<button type="button" class="' + cls + '" data-slot="' + s.time + '"' +
-                 (s.booked ? ' disabled title="این بازه رزرو واقعی دارد"' : '') + '>' +
-                 '<span class="admin-slot__time">' + u.toFa(s.time) + '</span>' +
-                 '<span class="admin-slot__state">' + label + '</span>' +
-               '</button>';
-      }).join('') + '</div>' +
-      '<p class="muted" style="font-size:var(--fs-xs);margin-top:var(--sp-3);line-height:1.9;">' +
-        'روی هر بازه بزنید تا دستی «پر» یا «آزاد» شود. بازه‌هایی که رزرو واقعی دارند قابل تغییر نیستند؛ ' +
-        'برای آن‌ها از تب «نوبت‌ها» استفاده کنید.' +
-      '</p>';
+        slotsHTML =
+          '<div class="day-meta">' +
+            '<span>' + ZZ.icon('calendarDays', null, 15) + u.toFa(booked) + ' نوبت رزروشده</span>' +
+            '<span>' + ZZ.icon('clock', null, 15) + u.toFa(open) + ' بازه‌ی آزاد</span>' +
+          '</div>' +
+          '<div class="admin-slots">' + slots.map(slotHTML).join('') + '</div>' +
+          '<p class="admin-hint">' +
+            'روی بازه‌ی آزاد بزنید تا دستی «پر» شود؛ بازه‌ی رزروشده هم مستقیم شماره‌ی مراجعه‌کننده را می‌گیرد. ' +
+            'برای لغو یک رزرو واقعی از تب «نوبت‌ها» استفاده کنید.' +
+          '</p>';
+      }
     }
 
-    return dayManageShell(dayList, selDate, isWeeklyOff, isClosed, slotsHTML);
-  }
-
-  /** قالب مشترک تب «مدیریت روزها» */
-  function dayManageShell(dayList, selDate, isWeeklyOff, isClosed, slotsHTML) {
     return '<div class="day-manage">' +
+      cal +
       '<div>' +
-        '<h3 style="font-size:var(--fs-md);margin-bottom:var(--sp-3);">انتخاب روز</h3>' +
-        '<div class="day-list">' + dayList + '</div>' +
-      '</div>' +
-      '<div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);' +
-             'margin-bottom:var(--sp-4);flex-wrap:wrap;">' +
-          '<h3 style="font-size:var(--fs-md);margin:0;">' + u.esc(u.faDate(selDate, true)) + '</h3>' +
+        '<div class="day-detail__head">' +
+          '<h3 class="day-detail__title">' + u.esc(u.faDate(selDate, true)) + '</h3>' +
           (isWeeklyOff ? '' :
-            '<button class="btn ' + (isClosed ? 'btn--soft' : 'btn--ghost') + ' btn--sm" id="toggleDayBtn">' +
-              (isClosed ? ZZ.icon('check', null, 16) + 'باز کردن این روز'
-                        : ZZ.icon('x', null, 16) + 'تعطیل کردن این روز') +
+            '<button class="btn ' + (isClosed ? 'btn--soft' : 'btn--ghost') + ' btn--sm" data-toggle-day="1">' +
+              (isClosed ? ZZ.icon('check', null, 16) + 'باز کردن روز'
+                        : ZZ.icon('x', null, 16) + 'تعطیل کردن روز') +
             '</button>') +
         '</div>' +
         slotsHTML +
       '</div>' +
     '</div>';
   }
-
 
   /* ---------------- تب مدیریت خدمات ---------------- */
 
@@ -534,8 +758,10 @@
       } else {
         state.services = [];
       }
-      return '<div class="note">' + ZZ.icon('info') +
-             '<span>در حال بارگذاری خدمات…</span></div>';
+      return '<div class="svc-editor" aria-busy="true">' +
+        '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
+        '<div class="skel-card"><span class="skel skel--line"></span><span class="skel skel--line skel--sm"></span></div>' +
+      '</div>';
     }
 
     if (!state.services.length) {
@@ -582,7 +808,7 @@
       }).join('');
 
       return '<article class="svc-card' + (open ? ' is-open' : '') + '" data-svc="' + s.id + '">' +
-        '<button type="button" class="svc-card__head" data-toggle="' + s.id + '">' +
+        '<button type="button" class="svc-card__head" data-toggle="' + s.id + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
           '<span class="svc-card__icon">' + ZZ.icon(s.icon || 'sparkle', null, 20) + '</span>' +
           '<span class="svc-card__info">' +
             '<span class="svc-card__name">' + u.esc(s.title) + '</span>' +
@@ -597,7 +823,7 @@
         '</button>' +
 
         '<div class="svc-card__body"><div class="svc-card__body__inner">' +
-          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، توضیح کوتاه و لینک اینستاگرام.', 
+          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، توضیح کوتاه و لینک اینستاگرام.',
             '<label class="svc-field">' +
               '<span>نام خدمت</span>' +
               '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
@@ -614,7 +840,7 @@
             !state.collapsedSections[s.id + ':1']
           ) +
 
-          svcSection(2, 'گزینه‌ها و قیمت‌ها', 'هر گزینه، قیمت و مدت مخصوص خودش را دارد.', 
+          svcSection(2, 'گزینه‌ها و قیمت‌ها', 'هر گزینه، قیمت و مدت مخصوص خودش را دارد.',
             '<div class="svc-vars">' + rows + '</div>',
             state.collapsedSections[s.id + ':2'] !== true
           ) +
@@ -771,84 +997,169 @@
 
   /* ---------------- رندر کل صفحه ---------------- */
 
+  /** کارت‌های آمار — کلیک‌پذیر تا مدیر با یک لمس به همان فهرست برسد */
+  function dashHTML(st) {
+    var pendingNum = (typeof st.pending === 'number') ? st.pending : null;
+
+    function card(c) {
+      var inner =
+        '<span class="dash-card__ico">' + ZZ.icon(c.icon, null, 19) + '</span>' +
+        '<strong class="dash-card__num">' + (c.num === undefined || c.num === null ? '—' : c.num) + '</strong>' +
+        '<span class="dash-card__lbl">' + c.label + '</span>';
+
+      if (!c.goto) {
+        return '<div class="dash-card' + (c.cls ? ' ' + c.cls : '') + '">' + inner + '</div>';
+      }
+      return '<button type="button" class="dash-card' + (c.cls ? ' ' + c.cls : '') +
+        '" data-goto="' + c.goto + '" title="' + u.esc(c.title || c.label) + '">' + inner + '</button>';
+    }
+
+    var cards = [
+      { num: pendingNum === null ? '—' : u.toFa(pendingNum), label: 'در انتظار تأیید',
+        icon: 'clock', goto: 'appointments:pending', title: 'دیدن درخواست‌های در انتظار',
+        cls: pendingNum ? 'is-wait' : '' },
+      { num: st.today === undefined ? '—' : u.toFa(st.today), label: 'نوبت امروز',
+        icon: 'calendarDays', goto: 'days:today', title: 'برنامه و ساعت‌های امروز' },
+      { num: st.upcoming === undefined ? '—' : u.toFa(st.upcoming), label: 'نوبت پیش رو',
+        icon: 'calendar', goto: 'appointments:upcoming', title: 'دیدن نوبت‌های تأییدشده' },
+      { num: st.users === undefined ? '—' : u.toFa(st.users), label: 'مراجعه‌کننده',
+        icon: 'users' },
+      { num: (typeof st.deposits === 'number') ? u.money(st.deposits) : '—',
+        label: 'بیعانه‌ی دریافتی', icon: 'wallet' }
+    ];
+
+    return '<div class="admin-dash">' + cards.map(card).join('') + '</div>';
+  }
+
   function render() {
     var root = u.$('#adminRoot');
     var st = pull('stats', function () { return A.stats(); },
-                  { today: '—', upcoming: '—', users: '—', total: '—' });
+                  { today: '—', upcoming: '—', users: '—', pending: 0 });
     var user = ZZ.auth.currentUser() || {};
 
     var pendingCount = (typeof st.pending === 'number') ? st.pending : 0;
+
     var filters = [
-      { id: 'pending', label: 'در انتظار تأیید', count: pendingCount },
-      { id: 'upcoming', label: 'تأییدشده' },
-      { id: 'past', label: 'انجام شده' },
+      { id: 'pending',   label: 'در انتظار تأیید', count: pendingCount },
+      { id: 'upcoming',  label: 'تأییدشده' },
+      { id: 'past',      label: 'انجام شده' },
       { id: 'cancelled', label: 'لغو / رد شده' },
-      { id: 'all', label: 'همه' }
+      { id: 'all',       label: 'همه' }
     ];
 
+    /* ---- دکمه‌ی تب — یک‌بار برای سایدبار، یک‌بار برای dock ---- */
+    function tabBtn(t, kind) {
+      var active = state.tab === t.id;
+      var badge = (t.id === 'appointments' && pendingCount)
+        ? '<span class="count-badge">' + u.toFa(pendingCount) + '</span>' : '';
+      if (kind === 'dock') {
+        return '<button type="button" class="admin-dock__btn' + (active ? ' is-active' : '') +
+          '" data-tab="' + t.id + '" role="tab" aria-selected="' + (active ? 'true' : 'false') +
+          '" aria-controls="panel-' + t.id + '" tabindex="' + (active ? '0' : '-1') + '">' +
+          '<span class="admin-dock__ico">' + ZZ.icon(t.icon, null, 22) + '</span>' +
+          '<span class="admin-dock__lbl">' + u.esc(t.short) + '</span>' + badge +
+        '</button>';
+      }
+      return '<button type="button" class="admin-side__link' + (active ? ' is-active' : '') +
+        '" id="tab-' + t.id + '" data-tab="' + t.id + '" role="tab"' +
+        ' aria-selected="' + (active ? 'true' : 'false') + '" aria-controls="panel-' + t.id +
+        '" tabindex="' + (active ? '0' : '-1') + '">' +
+        ZZ.icon(t.icon, null, 19) + '<span>' + u.esc(t.label) + '</span>' +
+        (t.id === 'appointments' && pendingCount
+          ? '<span class="count-badge">' + u.toFa(pendingCount) + '</span>' : '') +
+      '</button>';
+    }
+
     root.innerHTML = '' +
-      /* ---- سربرگ تیره ---- */
-      '<div class="panel-head">' +
-        '<div class="container">' +
-          '<div class="panel-head__row">' +
+      /* ---- سایدبار دسکتاپ ---- */
+      '<aside class="admin-side">' +
+        '<a class="admin-side__brand" href="' + B + 'index.html" aria-label="بازگشت به سایت">' +
+          '<img src="' + B + 'assets/img/brand/logo.png" alt="' + u.esc(ZZ.config.brand.name) +
+            '" width="900" height="241" loading="lazy">' +
+          '<span class="admin-side__tag">پنل مدیریت</span>' +
+        '</a>' +
+        '<nav class="admin-side__nav" role="tablist" aria-label="بخش‌های پنل مدیریت">' +
+          TABS.map(function (t) { return tabBtn(t, 'side'); }).join('') +
+        '</nav>' +
+        '<div class="admin-side__foot">' +
+          '<span class="admin-side__user">' +
+            '<strong>' + u.esc(user.name || 'مدیر') + '</strong>' +
+            '<span class="ltr">' + u.prettyPhoneHTML(user.phone || '') + '</span>' +
+          '</span>' +
+          '<a class="admin-side__link" href="' + B + 'panel/index.html">' +
+            ZZ.icon('user', null, 19) + '<span>پنل کاربری</span>' +
+          '</a>' +
+          '<button type="button" class="admin-side__link admin-side__link--out" data-logout="1">' +
+            ZZ.icon('logout', null, 19) + '<span>خروج از حساب</span>' +
+          '</button>' +
+        '</div>' +
+      '</aside>' +
+
+      '<div class="admin-body">' +
+        /* ---- سربرگ فشرده ---- */
+        '<header class="admin-head">' +
+          '<div class="admin-head__in">' +
             '<div>' +
               '<h1>پنل مدیریت</h1>' +
-              '<p>خوش آمدید ' + u.esc(user.name || 'مدیر') + ' — نوبت‌های در انتظار، امروز و آمار سالن را اینجا می‌بینید.</p>' +
+              '<p>' +
+                (pendingCount
+                  ? 'سلام ' + u.esc(user.name || 'مدیر') + '؛ ' + u.toFa(pendingCount) +
+                    ' درخواست در انتظار تماس و تأیید شماست.'
+                  : 'سلام ' + u.esc(user.name || 'مدیر') + '؛ در انتظار جدیدی نیست. همه‌چیز مرتب است.') +
+              '</p>' +
             '</div>' +
-            '<div class="panel-head__actions">' +
+            '<div class="admin-head__actions">' +
               '<span class="badge badge--gold">' + ZZ.icon('shield', null, 14) + 'دسترسی مدیر</span>' +
-              '<a class="btn btn--ghost btn--sm head-link" href="' + B + 'panel/index.html">' +
-                '<span class="ltr">' + u.prettyPhoneHTML(user.phone || '') + '</span>' +
-              '</a>' +
-              '<button class="btn btn--quiet btn--sm head-logout" id="logoutBtn">' +
-                ZZ.icon('logout', null, 16) + 'خروج</button>' +
+              '<a class="icon-btn" href="' + B + 'panel/index.html" aria-label="پنل کاربری" ' +
+                'title="پنل کاربری">' + ZZ.icon('user', null, 18) + '</a>' +
+              '<button type="button" class="icon-btn" data-logout="1" aria-label="خروج از حساب" ' +
+                'title="خروج از حساب">' + ZZ.icon('logout', null, 18) + '</button>' +
             '</div>' +
           '</div>' +
+        '</header>' +
+
+        '<div class="admin-content">' +
+          /* ---- آمار کلیک‌پذیر ---- */
+          dashHTML(st) +
+
+          /* ---- گام‌ها (پنل‌ها) ---- */
+          '<section class="admin-panel" id="panel-appointments" role="tabpanel" ' +
+            'aria-labelledby="tab-appointments"' + (state.tab === 'appointments' ? '' : ' hidden') + '>' +
+            '<div class="admin-filters" role="group" aria-label="فیلتر وضعیت نوبت‌ها">' +
+              filters.map(function (f) {
+                var on = state.filter === f.id;
+                return '<button type="button" class="fchip' + (on ? ' is-active' : '') +
+                  '" data-filter="' + f.id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                  f.label +
+                  (f.count ? '<span class="count-dot">' + u.toFa(f.count) + '</span>' : '') +
+                '</button>';
+              }).join('') +
+            '</div>' +
+            '<div class="admin-search">' +
+              ZZ.icon('search', 'admin-search__ico', 17) +
+              '<input class="input" id="searchInput" type="search" ' +
+                'placeholder="جست‌وجوی نام، شماره یا خدمت…" value="' + u.esc(state.q) + '"' +
+                ' aria-label="جست‌وجو در نوبت‌ها">' +
+            '</div>' +
+            renderAppointments() +
+          '</section>' +
+
+          '<section class="admin-panel" id="panel-days" role="tabpanel" ' +
+            'aria-labelledby="tab-days"' + (state.tab === 'days' ? '' : ' hidden') + '>' +
+            renderDays() +
+          '</section>' +
+
+          '<section class="admin-panel" id="panel-services" role="tabpanel" ' +
+            'aria-labelledby="tab-services"' + (state.tab === 'services' ? '' : ' hidden') + '>' +
+            renderServices() +
+          '</section>' +
         '</div>' +
       '</div>' +
 
-      '<div class="container">' +
-        /* ---- آمار ---- */
-        '<div class="admin-stats">' +
-          '<div class="admin-stat' + (pendingCount ? ' admin-stat--wait' : '') + '">' +
-            '<strong>' + u.toFa(st.pending === undefined ? '—' : st.pending) + '</strong>' +
-            '<span>در انتظار تأیید</span></div>' +
-          '<div class="admin-stat admin-stat--accent"><strong>' + u.toFa(st.today) + '</strong><span>نوبت امروز</span></div>' +
-          '<div class="admin-stat"><strong>' + u.toFa(st.upcoming) + '</strong><span>نوبت پیش رو</span></div>' +
-          '<div class="admin-stat"><strong>' + u.toFa(st.users) + '</strong><span>مراجعه‌کننده</span></div>' +
-        '</div>' +
-
-        /* ---- تب‌ها ---- */
-        '<div class="admin-tabs" role="tablist">' +
-          '<button class="admin-tab' + (state.tab === 'appointments' ? ' is-active' : '') + '" ' +
-            'data-tab="appointments" role="tab">' + ZZ.icon('calendar', null, 17) + 'نوبت‌ها</button>' +
-          '<button class="admin-tab' + (state.tab === 'days' ? ' is-active' : '') + '" ' +
-            'data-tab="days" role="tab">' + ZZ.icon('grid', null, 17) + 'روزها و ساعت‌ها</button>' +
-          '<button class="admin-tab' + (state.tab === 'services' ? ' is-active' : '') + '" ' +
-            'data-tab="services" role="tab">' + ZZ.icon('tag', null, 17) + 'خدمات و محتوا</button>' +
-        '</div>' +
-
-        (state.tab === 'services'
-          ? renderServices()
-          : state.tab === 'appointments'
-          ? /* ---- نوار ابزار ---- */
-            '<div class="admin-toolbar">' +
-              filters.map(function (f) {
-                return '<button class="btn ' +
-                  (state.filter === f.id ? 'btn--primary' : 'btn--ghost') +
-                  ' btn--sm" data-filter="' + f.id + '">' + f.label +
-                  (f.count ? '<span class="count-dot">' + u.toFa(f.count) + '</span>' : '') +
-                  '</button>';
-              }).join('') +
-              '<span class="admin-toolbar__spacer"></span>' +
-              '<input class="input" id="searchInput" type="search" placeholder="جست‌وجوی نام، شماره یا خدمت…" ' +
-                'value="' + u.esc(state.q) + '">' +
-            '</div>' +
-            renderAppointments()
-          : renderDays()) +
-
-        '<div style="height:var(--sp-8);"></div>' +
-      '</div>';
+      /* ---- ناوبری پایین (موبایل) ---- */
+      '<nav class="admin-dock" role="tablist" aria-label="بخش‌های پنل مدیریت">' +
+        TABS.map(function (t) { return tabBtn(t, 'dock'); }).join('') +
+      '</nav>';
   }
 
   /* ---------------- رویدادها ---------------- */
@@ -873,6 +1184,21 @@
     if (s2) { s2.focus(); s2.setSelectionRange(s2.value.length, s2.value.length); }
   }, 300);
 
+  /** تعویض تب + اسکرول به بالای محتوا */
+  function setTab(tab, opts) {
+    state.tab = tab;
+    try {
+      history.replaceState(null, '', '#' + tab);
+    } catch (e) { /* noop */ }
+    render();
+    if (!opts || !opts.keepScroll) {
+      global.scrollTo({
+        top: 0,
+        behavior: u.reducedMotion() ? 'auto' : 'smooth'
+      });
+    }
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
@@ -880,15 +1206,37 @@
     var root = u.$('#adminRoot');
 
     root.addEventListener('click', function (e) {
-      /* تب‌ها */
+      /* ---- تب‌ها (dock و سایدبار) ---- */
       var tab = e.target.closest('[data-tab]');
-      if (tab) { state.tab = tab.dataset.tab; render(); return; }
+      if (tab) { setTab(tab.dataset.tab); return; }
 
-      /* فیلتر */
+      /* ---- پرش از کارت‌های آمار ---- */
+      var gotoEl = e.target.closest('[data-goto]');
+      if (gotoEl) {
+        var g = gotoEl.dataset.goto.split(':');
+        state.tab = g[0];
+        if (g[0] === 'appointments' && g[1]) state.filter = g[1];
+        if (g[0] === 'days' && g[1] === 'today') {
+          state.selectedDay = u.dateKey(new Date());
+          state.calIndex = 0;
+        }
+        setTab(g[0]);
+        return;
+      }
+
+      /* ---- ماه قبل/بعد در تقویم ---- */
+      var calNav = e.target.closest('[data-cal]');
+      if (calNav && !calNav.disabled) {
+        state.calIndex = Math.max(0, (state.calIndex || 0) + parseInt(calNav.dataset.cal, 10));
+        render();
+        return;
+      }
+
+      /* ---- فیلتر ---- */
       var f = e.target.closest('[data-filter]');
       if (f) { state.filter = f.dataset.filter; render(); return; }
 
-      /* انتخاب روز */
+      /* ---- انتخاب روز ---- */
       var day = e.target.closest('[data-day]');
       if (day && !day.disabled) {
         state.selectedDay = day.dataset.day;
@@ -896,9 +1244,9 @@
         return;
       }
 
-      /* تعطیل/باز کردن روز */
-      if (e.target.closest('#toggleDayBtn')) {
-        var dayBtn = e.target.closest('#toggleDayBtn');
+      /* ---- تعطیل/باز کردن روز ---- */
+      var dayBtn = e.target.closest('[data-toggle-day]');
+      if (dayBtn) {
         if (dayBtn.disabled) return;
         dayBtn.disabled = true;
         run(A.toggleDay(state.selectedDay), function (closed) {
@@ -911,7 +1259,7 @@
         return;
       }
 
-      /* پر/آزاد کردن بازه */
+      /* ---- پر/آزاد کردن بازه ---- */
       var slot = e.target.closest('[data-slot]');
       if (slot && !slot.disabled) {
         /* جلوگیری از کلیک دوباره تا وقتی پاسخ سرور برسد */
@@ -920,6 +1268,7 @@
           ZZ.toast.ok(blocked ? 'این بازه پر شد' : 'این بازه آزاد شد');
           invalidate('slots:' + state.selectedDay);
           invalidate('days');
+          invalidate('stats');
           render();
         });
         return;
@@ -937,20 +1286,10 @@
         return;
       }
 
-      /* ---- رد درخواست ---- */
+      /* ---- رد درخواست (پنجره با دلایل آماده) ---- */
       var rej = e.target.closest('[data-reject]');
       if (rej) {
-        var why = global.prompt(
-          'دلیل رد درخواست (به مراجعه‌کننده نشان داده می‌شود):',
-          'در این ساعت امکان پذیرش نبود'
-        );
-        if (why === null) return;
-        rej.disabled = true;
-        run(A.reject(rej.dataset.reject, why), function (res) {
-          if (!res) { ZZ.toast.error('این درخواست دیگر در انتظار تأیید نیست.'); }
-          else { ZZ.toast.ok('درخواست رد شد و ساعت آزاد شد'); }
-          afterChange();
-        });
+        openRejectDialog(rej.dataset.reject);
         return;
       }
 
@@ -961,7 +1300,7 @@
         return;
       }
 
-      /* ---- انجام شد / غیبت ---- */
+      /* ---- انجام شد ---- */
       var doneBtn = e.target.closest('[data-done]');
       if (doneBtn) {
         run(A.markDone(doneBtn.dataset.done), function () {
@@ -971,32 +1310,46 @@
         return;
       }
 
+      /* ---- غیبت ---- */
       var nsBtn = e.target.closest('[data-noshow]');
       if (nsBtn) {
-        if (!global.confirm('غیبت این مراجعه‌کننده ثبت شود؟ دفعه‌ی بعد به شما یادآوری می‌شود که بیعانه بگیرید.')) return;
-        run(A.markNoShow(nsBtn.dataset.noshow), function () {
-          ZZ.toast.ok('غیبت ثبت شد');
-          afterChange();
+        confirmDanger({
+          title: 'ثبت غیبت',
+          message: 'غیبت این مراجعه‌کننده ثبت شود؟ دفعه‌ی بعد به شما یادآوری می‌شود که بیعانه بگیرید.',
+          confirmLabel: 'ثبت غیبت'
+        }).then(function (ok) {
+          if (!ok) return;
+          run(A.markNoShow(nsBtn.dataset.noshow), function () {
+            ZZ.toast.ok('غیبت ثبت شد');
+            afterChange();
+          });
         });
         return;
       }
 
-      /* لغو نوبت */
+      /* ---- لغو نوبت ---- */
       var cancel = e.target.closest('[data-cancel]');
       if (cancel) {
-        if (!global.confirm('این نوبت لغو شود؟ به مراجعه‌کننده اطلاع بدهید.')) return;
-        cancel.disabled = true;
-        run(A.cancelAppointment(cancel.dataset.cancel), function () {
-          ZZ.toast.ok('نوبت لغو شد');
-          invalidate('appts:');
-          invalidate('slots:');
-          invalidate('stats');
-          render();
+        confirmDanger({
+          title: 'لغو این نوبت',
+          message: 'این نوبت لغو شود؟ ساعت فوراً آزاد می‌شود؛ به مراجعه‌کننده هم اطلاع بدهید.',
+          confirmLabel: 'بله، لغو کن'
+        }).then(function (ok) {
+          if (!ok) return;
+          cancel.disabled = true;
+          run(A.cancelAppointment(cancel.dataset.cancel), function () {
+            ZZ.toast.ok('نوبت لغو شد');
+            invalidate('appts:');
+            invalidate('slots:');
+            invalidate('days');
+            invalidate('stats');
+            render();
+          });
         });
         return;
       }
 
-      /* باز/بسته کردن بخش‌های شماره‌دار ویرایشگر خدمت */
+      /* ---- باز/بسته کردن بخش‌های شماره‌دار ویرایشگر خدمت ---- */
       var secToggle = e.target.closest('[data-svc-toggle]');
       if (secToggle) {
         var section = secToggle.closest('.svc-section');
@@ -1012,7 +1365,7 @@
         return;
       }
 
-      /* باز/بسته کردن کارت خدمت */
+      /* ---- باز/بسته کردن کارت خدمت ---- */
       var toggle = e.target.closest('[data-toggle]');
       if (toggle) {
         var id = parseInt(toggle.dataset.toggle, 10);
@@ -1069,7 +1422,7 @@
         return;
       }
 
-      /* ذخیره‌ی خدمت */
+      /* ---- ذخیره‌ی خدمت ---- */
       var save = e.target.closest('[data-save]');
       if (save) {
         var sid = parseInt(save.dataset.save, 10);
@@ -1096,16 +1449,44 @@
         return;
       }
 
-      /* خروج */
-      if (e.target.closest('#logoutBtn')) {
-        if (!global.confirm('از حساب خارج می‌شوید؟')) return;
-        ZZ.auth.logout();
-        global.location.href = B + 'index.html';
+      /* ---- خروج ---- */
+      if (e.target.closest('[data-logout]')) {
+        confirmDanger({
+          title: 'خروج از حساب',
+          message: 'از حساب مدیریت خارج می‌شوید؟',
+          confirmLabel: 'خروج'
+        }).then(function (ok) {
+          if (!ok) return;
+          ZZ.auth.logout();
+          global.location.href = B + 'index.html';
+        });
       }
     });
 
-    /* صفحه‌کلید برای سربرگ‌های قابل‌باز/بسته‌شدن بخش خدمات */
+    /* ---- کیبورد تب‌ها (WAI-ARIA tablist) ----
+       در RTL فلش چپ یعنی تبِ بعدی (چیدمان از راست به چپ). */
     root.addEventListener('keydown', function (e) {
+      var tab = e.target.closest && e.target.closest('[role="tab"]');
+      if (tab) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') {
+          var list = tab.closest('[role="tablist"]') || tab.closest('.admin-dock');
+          if (!list) return;
+          var tabs = u.$$('[role="tab"]', list);
+          var i = tabs.indexOf(tab);
+          if (i < 0) return;
+          var ni = i;
+          if (e.key === 'ArrowLeft') ni = (i + 1) % tabs.length;
+          else if (e.key === 'ArrowRight') ni = (i - 1 + tabs.length) % tabs.length;
+          else if (e.key === 'Home') ni = 0;
+          else ni = tabs.length - 1;
+          e.preventDefault();
+          tabs[ni].focus();
+          tabs[ni].click();
+          return;
+        }
+      }
+
+      /* صفحه‌کلید برای سربرگ‌های قابل‌باز/بسته‌شدن بخش خدمات */
       var secToggle = e.target.closest && e.target.closest('[data-svc-toggle]');
       if (!secToggle || e.target !== secToggle) return;
       if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
@@ -1139,6 +1520,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     ZZ.shell({ active: 'account', base: B });
 
+    /* علامت‌گذاری صفحه — CSS با آن هدر سایت را در دسکتاپ مخفی
+       می‌کند و سایدبار را نشان می‌دهد. */
+    document.body.classList.add('on-admin');
+
     /* اگر بک‌اند فعال است، نشست به‌صورت ناهمگام از سرور می‌آید.
        گارد نقش باید صبر کند وگرنه قبل از رسیدن پاسخ، کاربر را
        بیرون می‌اندازد. */
@@ -1146,6 +1531,35 @@
     global.addEventListener('zz:calendar', function () {
       if (u.$('#adminRoot') && u.$('#adminRoot').innerHTML) render();
     });
+
+    /* تازه‌سازی داده‌ها وقتی مدیر به پنل برمی‌گردد — او معمولاً برای
+       تماس با مشتری از مرورگر خارج می‌شود؛ موقع برگشت باید داده‌ی
+       تازه ببیند، نه کشِ لحظه‌ی ورود را. ویرایشگر بازِ خدمات عمداً
+       دست‌نخورده می‌ماند تا متنِ نوشته‌شده از بین نرود. */
+    function refreshAll() {
+      if (!u.$('#adminRoot') || !u.$('#adminRoot').innerHTML) return;
+      invalidate('appts:');
+      invalidate('slots:');
+      invalidate('days');
+      invalidate('stats');
+      render();
+    }
+    global.addEventListener('zz:refresh', refreshAll);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') refreshAll();
+    });
+
+    /* تبِ قبلی از hash یا پارامتر آدرس — تا با رفرش یا لینک مستقیم،
+       مدیر همان‌جا بماند که بود (مثلاً ?tab=days&filter=cancelled) */
+    var h = (global.location.hash || '').replace('#', '');
+    var tParam = u.param('tab');
+    var tab = TABS.some(function (x) { return x.id === tParam; }) ? tParam : h;
+    if (TABS.some(function (x) { return x.id === tab; })) state.tab = tab;
+
+    var fl = u.param('filter');
+    if (['pending', 'upcoming', 'past', 'cancelled', 'all'].indexOf(fl) > -1) {
+      state.filter = fl;
+    }
 
     var boot = function () {
       if (!ZZ.auth.requireAdmin(B)) return;

@@ -141,7 +141,10 @@
   /* ---------------- گام ۲: روز و ساعت ---------------- */
   function renderDays() {
     var strip = u.$('#dayStrip');
-    var days = ZZ.appointments.getDays();
+    /* در حالت بک‌اند، کش تقویم ممکن است برای پنل مدیریت بازتر باشد
+       (مثلاً ۶۰ روز)؛ نوار مشتری همیشه فقط به اندازه‌ی تنظیمات نشان
+       می‌دهد تا صفحه شلوغ نشود. */
+    var days = ZZ.appointments.getDays().slice(0, ZZ.config.booking.daysAhead);
 
     strip.innerHTML = days.map(function (d) {
       var open = !d.closed && ZZ.appointments.hasOpenSlot(d.key, state.serviceId);

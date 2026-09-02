@@ -1285,144 +1285,401 @@
    پنل مدیریت و پنل کاربری
    ========================================================================== */
 
-.panel-head {
+/* ==========================================================================
+   پنل مدیریت — پوسته‌ی موبایل‌محور
+   • موبایل: سربرگ فشرده + ناوبری پایین (dock) با جای امن آیفون
+   • دسکتاپ (≥1024): سایدبار ثابت؛ هدر سایت مخفی می‌شود
+   ========================================================================== */
+
+/* ---------- سربرگ فشرده ---------- */
+.admin-head {
   background: linear-gradient(135deg, #1A1210 0%, #2A1C16 60%, #3A2519 100%);
   color: var(--cream-100);
-  padding-top: calc(var(--sp-6) + var(--header-h));
-  padding-bottom: var(--sp-6);
-  margin-bottom: var(--sp-6);
+  padding-top: calc(var(--sp-5) + var(--header-h));
+  padding-bottom: var(--sp-5);
 }
-.panel-head h1 {
+.admin-head h1 {
   color: #fff;
   font-size: var(--fs-2xl);
-  margin-bottom: var(--sp-2);
+  margin-bottom: 2px;
 }
-.panel-head p {
+.admin-head p {
   color: var(--ink-300);
   margin: 0;
   font-size: var(--fs-sm);
   line-height: 1.9;
 }
-.panel-head__row {
+.admin-head__in {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   flex-wrap: wrap;
 }
-.panel-head .badge--gold {
+.admin-head .badge--gold {
   background: rgba(212, 177, 131, 0.18);
   color: var(--gold-300);
   border: 1px solid rgba(212, 177, 131, 0.35);
 }
-
-/* ---------- کارت‌های آمار ---------- */
-.admin-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-6);
+.admin-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
-@media (min-width: 760px) { .admin-stats { grid-template-columns: repeat(4, 1fr); } }
+.admin-head__actions .icon-btn {
+  background: rgba(255, 252, 250, 0.06);
+  border-color: rgba(255, 252, 250, 0.18);
+  color: var(--cream-200);
+}
+.admin-head__actions .icon-btn:hover {
+  border-color: var(--gold-300);
+  color: #fff;
+}
 
-.admin-stat {
-  padding: var(--sp-4);
+/* ---------- بدنه‌ی پنل ---------- */
+.admin-body { min-height: 60vh; }
+.admin-content {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--sp-5);
+  padding-block: var(--sp-5) calc(var(--sp-8) + 92px); /* جای dock موبایل */
+}
+@media (min-width: 720px) {
+  .admin-content { padding-inline: var(--sp-6); }
+}
+
+/* ---------- ناوبری پایین (موبایل) ---------- */
+.admin-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 95;
+  display: flex;
+  justify-content: space-around;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-3) calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 252, 250, 0.92);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+}
+.admin-dock__btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1 1 0;
+  max-width: 168px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.admin-dock__btn svg { color: var(--ink-500); transition: color var(--dur) var(--ease); }
+.admin-dock__btn:hover { color: var(--ink-900); }
+.admin-dock__btn:hover svg { color: var(--ink-900); }
+.admin-dock__btn.is-active {
+  background: var(--ink-900);
+  color: var(--cream-50);
+}
+.admin-dock__btn.is-active svg { color: var(--rose-300); }
+
+/* شمارنده‌ی درخواست‌های در انتظار روی دکمه‌ی نوبت‌ها */
+.count-badge {
+  position: absolute;
+  top: 2px;
+  inset-inline-start: calc(50% + 8px);
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--danger-500);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ---------- سایدبار دسکتاپ ---------- */
+.admin-side {
+  display: none;
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 264px;
+  flex-direction: column;
+  padding: var(--sp-5) var(--sp-4);
+  background: linear-gradient(180deg, #1A1210 0%, #241811 100%);
+  color: var(--cream-100);
+  z-index: 60;
+}
+.admin-side__brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-4);
+  border: 1px solid rgba(212, 177, 131, 0.25);
+  border-radius: var(--r-md);
+}
+.admin-side__brand img {
+  width: 100%;
+  max-width: 128px;
+  height: auto;
+  filter: brightness(0) invert(1) opacity(0.94);
+}
+.admin-side__tag {
+  font-size: var(--fs-xs);
+  color: var(--gold-300);
+  letter-spacing: 0.02em;
+}
+.admin-side__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-side__link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--cream-200);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-align: start;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.admin-side__link svg { color: var(--ink-300); flex-shrink: 0; transition: color var(--dur) var(--ease); }
+.admin-side__link:hover { background: rgba(255, 252, 250, 0.07); color: #fff; }
+.admin-side__link:hover svg { color: var(--gold-300); }
+.admin-side__link.is-active {
+  background: rgba(255, 252, 250, 0.1);
+  border-color: rgba(212, 177, 131, 0.4);
+  color: #fff;
+}
+.admin-side__link.is-active svg { color: var(--gold-300); }
+.admin-side__link .count-badge {
+  position: static;
+  inset-inline-end: auto;
+  margin-inline-start: auto;
+}
+.admin-side__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: var(--sp-4);
+  border-top: 1px solid rgba(255, 252, 250, 0.12);
+}
+.admin-side__user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--sp-3) var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-300);
+}
+.admin-side__user strong {
+  color: var(--cream-100);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.admin-side__link--out:hover { background: rgba(168, 68, 58, 0.22); color: #F6C9C2; }
+.admin-side__link--out:hover svg { color: #F6C9C2; }
+
+/* در دسکتاپ: سایدبار جای هدر سایت را می‌گیرد */
+@media (min-width: 1024px) {
+  body.on-admin .header,
+  body.on-admin .mobile-nav { display: none; }
+  body.on-admin .admin-side { display: flex; }
+  body.on-admin .admin-body { margin-inline-start: 264px; }
+  body.on-admin .admin-head { padding-top: var(--sp-6); }
+  body.on-admin .admin-head__actions { display: none; }
+  body.on-admin .admin-dock { display: none; }
+  body.on-admin .admin-content { padding-bottom: var(--sp-8); }
+}
+
+/* پیام‌های شناور روی dock موبایل نیفتند */
+body.on-admin .toast-host {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 1024px) {
+  body.on-admin .toast-host {
+    bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- کارت‌های آمار کلیک‌پذیر ---------- */
+.admin-dash {
+  display: flex;
+  gap: 10px;
+  margin-bottom: var(--sp-5);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-dash::-webkit-scrollbar { display: none; }
+.admin-dash { scrollbar-width: none; }
+
+.dash-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 0 0 auto;
+  width: 132px;
+  scroll-snap-align: start;
+  padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--bg-elevated);
-  text-align: center;
+  text-align: start;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+              transform 0.15s var(--ease);
 }
-.admin-stat strong {
-  display: block;
+button.dash-card { cursor: pointer; }
+button.dash-card:hover {
+  border-color: var(--rose-400);
+  box-shadow: var(--shadow-sm);
+}
+button.dash-card:active { transform: translateY(1px); }
+.dash-card__ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 4px;
+  border-radius: var(--r-full);
+  background: var(--blush-100);
+  color: var(--rose-500);
+}
+.dash-card__num {
   font-family: var(--font-title);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
+  font-weight: 600;
   color: var(--ink-900);
-  line-height: 1.4;
+  line-height: 1.35;
 }
-.admin-stat span {
-  display: block;
+.dash-card__lbl {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.7;
 }
-.admin-stat--accent {
-  background: var(--blush-100);
-  border-color: var(--blush-300);
+/* درخواستِ در انتظار = مهم‌ترین کارِ امروز مدیر */
+.dash-card.is-wait {
+  border-color: var(--gold-300);
+  background: linear-gradient(0deg, rgba(253, 241, 220, 0.5), rgba(255, 252, 250, 0.9));
 }
-.admin-stat--accent strong { color: var(--rose-600); }
+.dash-card.is-wait .dash-card__ico {
+  background: var(--warn-50);
+  color: var(--warn-600);
+}
+.dash-card.is-wait .dash-card__num { color: var(--warn-600); }
 
-/* ---------- نوار ابزار ---------- */
-.admin-toolbar {
+@media (min-width: 760px) {
+  .admin-dash {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    overflow: visible;
+  }
+  .dash-card { width: auto; }
+}
+
+/* ---------- فیلترها و جست‌وجو ---------- */
+.admin-filters {
+  position: sticky;
+  top: calc(var(--header-h) + 6px);
+  z-index: 20;
   display: flex;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
+  gap: 6px;
+  padding: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: rgba(255, 252, 250, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-filters::-webkit-scrollbar { display: none; }
+body.on-admin .admin-filters { top: calc(var(--header-h) + 6px); }
+@media (min-width: 1024px) {
+  body.on-admin .admin-filters { top: 10px; }
+}
+
+.fchip {
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.fchip:hover { color: var(--ink-900); background: var(--cream-100); }
+.fchip.is-active {
+  background: var(--ink-900);
+  color: var(--cream-50);
+}
+
+.admin-search {
+  position: relative;
   margin-bottom: var(--sp-4);
 }
-.admin-toolbar .input { max-width: 280px; }
-.admin-toolbar__spacer { flex: 1; min-width: 0; }
-
-/* ---------- جدول نوبت‌ها ---------- */
-.admin-table-wrap {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--bg-elevated);
+.admin-search .input {
+  padding-inline-start: 46px;
 }
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-sm);
-}
-.admin-table th {
-  background: var(--cream-100);
-  padding: var(--sp-3) var(--sp-4);
-  text-align: start;
-  font-weight: 600;
-  color: var(--ink-800);
-  border-bottom: 1px solid var(--line-strong);
-  white-space: nowrap;
-  font-size: var(--fs-xs);
-}
-.admin-table td {
-  padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-  line-height: 1.8;
-}
-.admin-table tr:last-child td { border-bottom: none; }
-.admin-table tbody tr { transition: background-color var(--dur) var(--ease); }
-.admin-table tbody tr:hover { background: var(--cream-50); }
-.admin-table tr.is-cancelled { opacity: 0.55; }
-.admin-table tr.is-cancelled .admin-cell__svc { text-decoration: line-through; }
-
-.admin-cell__date { font-weight: 600; color: var(--ink-900); white-space: nowrap; }
-.admin-cell__time {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.admin-cell__svc { font-weight: 500; color: var(--ink-900); }
-.admin-cell__var { font-size: var(--fs-xs); color: var(--text-muted); }
-.admin-cell__name { font-weight: 500; }
-.admin-cell__birth {
-  display: block;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  white-space: nowrap;
+.admin-search__ico {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-300);
+  pointer-events: none;
 }
 
-/* لینک تماس مستقیم */
+/* ---------- آیکون کنار تاریخ تولد ---------- */
+.birth-ico {
+  display: inline-flex;
+  align-items: center;
+  color: var(--rose-500);
+}
+
+/* ---------- لینک تماس مستقیم ---------- */
 .admin-tel {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0.34rem 0.72rem;
+  min-height: 40px;
+  padding: 0.34rem 0.95rem;
   border-radius: var(--r-full);
   background: var(--success-50);
   color: var(--success-500);
-  font-size: var(--fs-xs);
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: 600;
   border: 1px solid rgba(76, 122, 83, 0.24);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1432,85 +1689,169 @@
 .admin-tel:hover .phone-dot { color: rgba(255, 255, 255, 0.6); }
 .admin-tel svg { width: 14px; height: 14px; flex-shrink: 0; }
 
-/* روی موبایل جدول به کارت تبدیل می‌شود */
-@media (max-width: 880px) {
-  .admin-table, .admin-table tbody, .admin-table tr, .admin-table td {
-    display: block;
-    width: 100%;
-  }
-  .admin-table thead { display: none; }
-  .admin-table tr {
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    margin-bottom: var(--sp-3);
-    padding: var(--sp-2);
-    background: var(--bg-elevated);
-  }
-  .admin-table td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
-    padding: var(--sp-2) var(--sp-3);
-    border-bottom: 1px dashed var(--line);
-  }
-  .admin-table td:last-child { border-bottom: none; }
-  .admin-table td::before {
-    content: attr(data-label);
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-  .admin-table-wrap { border: none; background: none; }
-}
-
-/* ---------- مدیریت روزها ---------- */
+/* ---------- مدیریت روزها: تقویم ماهانه ---------- */
 .day-manage {
   display: grid;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
   grid-template-columns: 1fr;
 }
-@media (min-width: 940px) { .day-manage { grid-template-columns: 290px 1fr; } }
+@media (min-width: 940px) { .day-manage { grid-template-columns: 360px 1fr; align-items: start; } }
 
-.day-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 480px;
-  overflow-y: auto;
-  padding-inline-end: 6px;
+.cal-card {
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
 }
-.day-item {
+.cal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
-  width: 100%;
-  padding: var(--sp-3);
-  border: 1px solid var(--line-strong);
+  margin-bottom: var(--sp-3);
+}
+.cal-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--ink-900);
+}
+.cal-nav { width: 40px; height: 40px; border: none; background: transparent; color: var(--ink-500); }
+.cal-nav:hover:not(:disabled) { background: var(--cream-100); color: var(--ink-900); border: none; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 46px;
+  padding: 2px;
+  border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--bg-elevated);
-  text-align: start;
-  transition: all var(--dur) var(--ease);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
-.day-item:hover:not(:disabled) { border-color: var(--rose-400); }
-.day-item.is-active {
-  background: var(--ink-900);
-  border-color: var(--ink-900);
-  color: var(--cream-50);
+.cal-cell__num {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink-900);
+  line-height: 1.4;
 }
-.day-item.is-active .day-item__sub { color: var(--cream-300); }
-.day-item.is-closed { background: var(--danger-50); border-color: #EBC4BE; }
-.day-item.is-closed.is-active { background: var(--ink-900); }
-.day-item:disabled { opacity: 0.45; cursor: not-allowed; }
-.day-item__main { font-weight: 500; line-height: 1.6; }
-.day-item__sub {
-  display: block;
+.cal-cell--week {
+  min-height: 28px;
+  border: none;
+  background: transparent;
   font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.7;
 }
-.day-item svg { flex-shrink: 0; opacity: 0.5; }
+.cal-cell--blank { border: none; background: transparent; min-height: 0; }
+
+button.cal-cell:hover:not(.is-selected) { border-color: var(--rose-400); background: var(--blush-100); }
+
+/* جمعه‌های تعطیل هفتگی */
+.cal-cell.is-weekly { background: var(--cream-100); }
+.cal-cell.is-weekly .cal-cell__num { color: var(--ink-300); }
+
+/* روزی که مدیر بسته */
+.cal-cell.is-closed {
+  background: var(--danger-50);
+  border-color: #EBC4BE;
+}
+.cal-cell.is-closed .cal-cell__num { color: var(--danger-500); }
+
+/* ظرفیت تکمیل */
+.cal-cell.is-full .cal-cell__num { color: var(--ink-400); }
+
+/* امروز */
+.cal-cell.is-today { border-color: var(--rose-500); }
+.cal-cell.is-today::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 50%;
+  bottom: 3px;
+  transform: translateX(50%);
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--rose-500);
+}
+
+/* روز انتخاب‌شده */
+.cal-cell.is-selected {
+  background: var(--ink-900);
+  border-color: var(--ink-900);
+}
+.cal-cell.is-selected .cal-cell__num { color: var(--cream-50); }
+.cal-cell.is-selected.is-closed { background: var(--ink-900); border-color: var(--ink-900); }
+.cal-cell.is-selected .cal-dot--closed { background: #F0A69C; }
+.cal-cell.is-selected::after { background: var(--rose-300); }
+
+/* نقطه‌های وضعیت زیر عدد */
+.cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+}
+.cal-dot--closed { background: var(--danger-500); }
+.cal-dot--full { background: var(--ink-300); }
+.cal-dot--today { background: var(--rose-500); }
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* سربرگ روزِ انتخاب‌شده */
+.day-detail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.day-detail__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.day-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.day-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.day-meta svg { color: var(--rose-400); }
+.admin-hint {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.9;
+}
 
 /* شبکه‌ی بازه‌ها */
 .admin-slots {
@@ -1552,9 +1893,14 @@
 .admin-slot.is-booked {
   background: var(--success-50);
   border-color: rgba(76, 122, 83, 0.35);
-  cursor: default;
 }
 .admin-slot.is-booked .admin-slot__state { color: var(--success-500); }
+/* بازه‌ی رزروشده حالا لینک تماس است، نه دکمه‌ی خاموش */
+a.admin-slot {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ink-900);
+}
 
 /* ---------- ویرایشگر خدمات (پنل مدیریت) ---------- */
 .svc-editor { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -2659,7 +3005,15 @@
   margin: 0 0 var(--sp-4);
   font-size: var(--fs-sm);
   color: var(--text-muted);
+  line-height: 1.9;
 }
+.modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.modal__body .field { margin: 0; }
+.modal__spacer { flex: 1; }
 .modal__actions {
   display: flex;
   align-items: center;
@@ -2706,94 +3060,10 @@
 }
 
 /* ==========================================================================
-   بازطراحی پنل مدیریت (UX/UI)
-   --------------------------------------------------------------------------
-   این بلاک بالای استایل‌های قدیمی می‌نشیند و پنل را به‌صورت کارت‌های
-   خوانا، با تب‌های دسته‌بندی‌شده و عملیاتِ هم‌تراز بازسازی می‌کند.
+   پنل مدیریت — کارت‌های نوبت و ویرایشگر خدمات
+   (پوسته‌ی اصلی پنل — سربرگ، سایدبار، dock و تقویم — بالای همین
+   فایل در بخش «پوسته‌ی موبایل‌محور» تعریف شده است.)
    ========================================================================== */
-
-/* ---------- سربرگ ---------- */
-.panel-head__actions {
-  display: flex;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
-  align-items: center;
-}
-.panel-head .head-link {
-  color: var(--cream-100);
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.06);
-  font-variant-numeric: tabular-nums;
-}
-.panel-head .head-logout {
-  color: var(--cream-100);
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
-}
-.panel-head .head-logout:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-}
-
-/* ---------- تب‌های مدیریت ---------- */
-.admin-tabs {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 6px;
-  margin: 0 0 var(--sp-5);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg-soft);
-}
-.admin-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0.7rem 1rem;
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--dur) var(--ease);
-  white-space: nowrap;
-}
-.admin-tab svg {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
-}
-.admin-tab:hover {
-  border-color: var(--blush-300);
-  color: var(--ink-900);
-}
-.admin-tab.is-active {
-  background: var(--ink-900);
-  border-color: var(--ink-900);
-  color: var(--cream-50);
-}
-.admin-tab.is-active svg {
-  color: var(--rose-300);
-}
-
-/* ---------- نوار ابزار نوبت‌ها ---------- */
-.admin-toolbar {
-  padding: var(--sp-3);
-  margin-bottom: var(--sp-4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg-elevated);
-}
-.admin-toolbar .input {
-  width: 100%;
-  max-width: none;
-}
-@media (min-width: 760px) {
-  .admin-toolbar .input { max-width: 300px; }
-}
 
 /* ---------- فهرست کارتی نوبت‌ها ---------- */
 .admin-list {
@@ -3127,23 +3397,62 @@
   justify-content: center;
 }
 
-/* ---------- مدیریت روزها — صفحه‌بندی تمیز ---------- */
-.day-manage {
+/* ---------- مدیریت روزها — بازه‌های خواناتر ---------- */
+.admin-slots {
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.admin-slot {
+  min-height: 76px;
+  padding: 0.85rem;
+  border-radius: var(--r-lg);
+}
+/* بازه‌ی رزروشده: نام مراجعه‌کننده + راهنمای تماس */
+.admin-slot__state strong {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--success-500);
+  line-height: 1.7;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-slot__state small {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+  line-height: 1.6;
+}
+.admin-slot__state small svg { width: 11px; height: 11px; }
+a.admin-slot:hover { border-color: var(--success-500); }
+
+/* ---------- اسکلت کارت نوبت ---------- */
+.skel-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
   padding: var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--bg-elevated);
 }
-.day-list {
-  max-height: 560px;
+.skel-row {
+  display: flex;
+  gap: var(--sp-2);
 }
-.admin-slots {
-  gap: var(--sp-3);
-}
-.admin-slot {
-  padding: 0.95rem;
-  border-radius: var(--r-lg);
-}
+.skel--chip { width: 92px; height: 26px; border-radius: var(--r-full); }
+.skel--line { width: 72%; height: 14px; }
+.skel--sm { width: 46%; }
+.skel--btn { flex: 1; height: 36px; border-radius: var(--r-full); }
+.skel--slot { height: 76px; border-radius: var(--r-lg); }
+.skel--day { height: 46px; border-radius: var(--r-md); }
+
+/* ---------- پنل‌ها (tab) ---------- */
+.admin-panel[hidden] { display: none; }
 
 /* ---------- موبایل پنل ---------- */
 @media (max-width: 640px) {
@@ -3159,19 +3468,19 @@
   .admin-appt__body {
     grid-template-columns: 1fr;
   }
-  .admin-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-  .admin-tab {
-    flex: 0 0 auto;
-  }
-  .panel-head__actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .panel-head__actions .badge,
-  .panel-head__actions .btn {
-    flex: 0 0 auto;
-  }
+  /* در موبایل اولین چیزی که مدیر باید ببیند مراجعه‌کننده است،
+     نه خدمت — تماس، قلب کار اوست. */
+  .admin-appt__customer { order: -1; }
+  .admin-head h1 { font-size: var(--fs-xl); }
 }
+
+/* در دسکتاپ فاصله‌ی دوطرفه کارت‌ها کمی بیشتر نفس بکشد */
+@media (min-width: 1024px) {
+  .admin-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+    align-items: start;
+  }
+  .admin-content { padding-block: var(--sp-6) var(--sp-8); }
+}
+

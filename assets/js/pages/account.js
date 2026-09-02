@@ -119,8 +119,8 @@
           '<h1>' + u.esc(user.name || 'خوش آمدید') + '</h1>' +
           '<p class="ltr phone-num" style="text-align:start;">' + u.prettyPhoneHTML(user.phone) + '</p>' +
           (user.birth
-            ? '<p style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 0;">' +
-                '\uD83C\uDF82 ' + u.formatBirth(user.birth) + '</p>'
+            ? '<p style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 0;display:flex;align-items:center;gap:5px;">' +
+                ZZ.icon('cake', 'birth-ico', 14) + u.formatBirth(user.birth) + '</p>'
             : '') +
         '</div>' +
         '<div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;">' +
@@ -181,7 +181,7 @@
                 '<select class="input" id="birthYear"  aria-label="سال تولد"></select>' +
               '</div>' +
               '<div class="birth-gift">' +
-                '<span class="birth-gift__emoji" aria-hidden="true">\uD83C\uDF82</span>' +
+                '<span class="birth-gift__emoji" aria-hidden="true">' + ZZ.icon('cake', null, 22) + '</span>' +
                 '<span>لطفاً تاریخ تولد خود را به‌صورت دقیق وارد کنید تا در روز تولدتان ' +
                 'شامل تخفیف ویژه شوید.</span>' +
               '</div>' +
@@ -233,17 +233,24 @@
       var cancelBtn = e.target.closest('[data-cancel]');
       if (cancelBtn) {
         var id = cancelBtn.dataset.cancel;
-        if (!global.confirm('این نوبت لغو شود؟')) return;
-        cancelBtn.classList.add('is-loading');
-        ZZ.appointments.cancel(id)
-          .then(function () {
-            ZZ.toast.ok('نوبت لغو شد');
-            render();
-          })
-          .catch(function (err) {
-            cancelBtn.classList.remove('is-loading');
-            ZZ.toast.error(err.message);
-          });
+        ZZ.dialog.confirm({
+          title: 'لغو نوبت',
+          message: 'این نوبت لغو شود؟ ساعت شما فوراً آزاد می‌شود.',
+          confirmLabel: 'بله، لغو کن',
+          danger: true
+        }).then(function (ok) {
+          if (!ok) return;
+          cancelBtn.classList.add('is-loading');
+          ZZ.appointments.cancel(id)
+            .then(function () {
+              ZZ.toast.ok('نوبت لغو شد');
+              render();
+            })
+            .catch(function (err) {
+              cancelBtn.classList.remove('is-loading');
+              ZZ.toast.error(err.message);
+            });
+        });
         return;
       }
 
@@ -260,21 +267,35 @@
 
       /* خروج */
       if (e.target.closest('#logoutBtn')) {
-        if (!global.confirm('از حساب کاربری خارج می‌شوید؟')) return;
-        ZZ.auth.logout();
-        ZZ.toast.info('از حساب خارج شدید');
-        setTimeout(function () { global.location.href = B + 'index.html'; }, 500);
+        ZZ.dialog.confirm({
+          title: 'خروج از حساب',
+          message: 'از حساب کاربری خارج می‌شوید؟',
+          confirmLabel: 'خروج',
+          danger: true
+        }).then(function (ok) {
+          if (!ok) return;
+          ZZ.auth.logout();
+          ZZ.toast.info('از حساب خارج شدید');
+          setTimeout(function () { global.location.href = B + 'index.html'; }, 500);
+        });
         return;
       }
 
       /* پاک کردن داده‌های نمایشی */
       if (e.target.closest('#resetBtn')) {
-        if (!global.confirm('همه‌ی داده‌های نمایشی (حساب و نوبت‌ها) پاک شوند؟')) return;
-        ['users', 'session', 'pending', 'appointments', 'bookingDraft'].forEach(function (k) {
-          ZZ.store.remove(k);
+        ZZ.dialog.confirm({
+          title: 'پاک کردن داده‌های نمایشی',
+          message: 'همه‌ی داده‌های نمایشی (حساب و نوبت‌ها) پاک شوند؟',
+          confirmLabel: 'بله، پاک کن',
+          danger: true
+        }).then(function (ok) {
+          if (!ok) return;
+          ['users', 'session', 'pending', 'appointments', 'bookingDraft'].forEach(function (k) {
+            ZZ.store.remove(k);
+          });
+          ZZ.toast.info('داده‌های نمایشی پاک شد');
+          setTimeout(function () { global.location.href = B + 'index.html'; }, 600);
         });
-        ZZ.toast.info('داده‌های نمایشی پاک شد');
-        setTimeout(function () { global.location.href = B + 'index.html'; }, 600);
       }
     });
 

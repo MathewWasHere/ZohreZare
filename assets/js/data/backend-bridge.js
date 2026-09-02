@@ -263,10 +263,14 @@
       } catch (e) { /* مرورگرهای قدیمی */ }
     }
 
-    A.getDays = function () {
-      if (!daysCache && !daysLoading) {
+    A.getDays = function (count) {
+      var need = count || 0;
+      var have = daysCache ? daysCache.length : 0;
+      /* اگر کش خالی است یا بازه‌ی بزرگ‌تری خواسته شده (مثلاً تقویم
+         ۶۰ روزه‌ی پنل مدیریت)، دوباره بگیر. */
+      if ((!daysCache || need > have) && !daysLoading) {
         daysLoading = true;
-        A.loadDays().then(function () {
+        A.loadDays(need > have ? need : undefined).then(function () {
           daysLoading = false;
           emitUpdate();
         }).catch(function () { daysLoading = false; });
