@@ -21,10 +21,58 @@
       '</div></div>';
   }
 
+  /**
+   * بلوک مراقبتی و هشدارهای یک خدمت را برمی‌گرداند.
+   *
+   * دو منبع وجود دارد: ستون‌های آماده‌ی سرور (وقتی سایت به API وصل
+   * است) و بلوک‌های مشترک محلی در service-care.js (حالت آفلاین یا
+   * وقتی مدیر هنوز متنی وارد نکرده). اولی مقدم است.
+   */
+  function careOf(s) {
+    var shared = ZZ.services.careOf ? ZZ.services.careOf(s) : null;
+    var pmuBlock = (ZZ.care && ZZ.care.pmu) ? ZZ.care.pmu : null;
+
+    var pre = (s.precare && s.precare.length) ? s.precare : (shared ? shared.pre : []);
+    var post = (s.aftercare && s.aftercare.length) ? s.aftercare : (shared ? shared.post : []);
+    var label = s.careLabel || (shared ? shared.label : '');
+
+    /* فهرست ممنوعه‌ها فقط برای خدمت‌های رنگ‌دانه‌ای (PMU) معنا دارد */
+    var contra = [];
+    var contraNote = '';
+    if (s.contraindications && s.contraindications.length) {
+      contra = s.contraindications;
+      contraNote = s.contraindicationsNote || '';
+    } else if (s.pmu && pmuBlock) {
+      contra = pmuBlock.items;
+      contraNote = pmuBlock.note;
+    }
+
+    return { pre: pre, post: post, label: label, contra: contra, contraNote: contraNote };
+  }
+
+  /** یک بخش فهرستی ساده (تیک‌دار) */
+  function listSection(title, items, sub) {
+    if (!items || !items.length) return '';
+    return '<div class="reveal" style="margin-top:var(--sp-6);">' +
+             '<h2 style="font-size:var(--fs-xl);margin-bottom:' + (sub ? 'var(--sp-2)' : 'var(--sp-4)') + ';">' +
+               u.esc(title) + '</h2>' +
+             (sub ? '<p style="color:var(--text-muted);font-size:var(--fs-sm);margin-bottom:var(--sp-4);">' +
+                      u.esc(sub) + '</p>' : '') +
+             '<ul class="check-list">' +
+               items.map(function (x) {
+                 return '<li>' + ZZ.icon('check') + '<span>' + u.esc(x) + '</span></li>';
+               }).join('') +
+             '</ul>' +
+           '</div>';
+  }
+
   function render(root, s) {
     document.title = s.title + ' | ' + ZZ.config.brand.name;
     var meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute('content', s.short);
+
+    /* ---- بلوک‌های مشترک مراقبت / هشدار ---- */
+    var care = careOf(s);
 
     /* ---- جدول قیمت ---- */
     var priceRows = s.variants.map(function (v) {
@@ -81,6 +129,7 @@
           '</nav>' +
           '<span class="eyebrow">' + u.duration(s.durationMin) + ' • از ' + u.money(s.priceFrom) + ' ' + CUR + '</span>' +
           '<h1>' + u.esc(s.title) + '</h1>' +
+          (s.tagline ? '<p class="page-head__tagline">' + u.esc(s.tagline) + '</p>' : '') +
           '<p>' + u.esc(s.short) + '</p>' +
         '</div>' +
       '</div>' +
@@ -101,6 +150,19 @@
                 s.description.map(function (p) { return '<p>' + u.esc(p) + '</p>'; }).join('') +
               '</div>' +
 
+              /* ---- مزایا ---- */
+              (function () {
+                if (!s.benefits || !s.benefits.length) return '';
+                return '<div class="reveal" style="margin-top:var(--sp-6);">' +
+                         '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-4);">مزایای این خدمت</h2>' +
+                         '<ul class="check-list">' +
+                           s.benefits.map(function (x) {
+                             return '<li>' + ZZ.icon('sparkle') + '<span>' + u.esc(x) + '</span></li>';
+                           }).join('') +
+                         '</ul>' +
+                       '</div>';
+              })() +
+
               '<div class="reveal" style="margin-top:var(--sp-6);">' +
                 '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-4);">این جلسه شامل چیست؟</h2>' +
                 '<ul class="check-list">' +
@@ -109,6 +171,22 @@
                   }).join('') +
                 '</ul>' +
               '</div>' +
+
+              /* ---- نکات مهم قبل از رزرو ---- */
+              (function () {
+                if (!s.beforeReserve || !s.beforeReserve.length) return '';
+                return '<div class="reveal" style="margin-top:var(--sp-6);">' +
+                         '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-4);">' +
+                           'نکات مهم قبل از رزرو نوبت</h2>' +
+                         '<div class="card card--pad">' +
+                           '<ul class="check-list check-list--soft">' +
+                             s.beforeReserve.map(function (x) {
+                               return '<li>' + ZZ.icon('info') + '<span>' + u.esc(x) + '</span></li>';
+                             }).join('') +
+                           '</ul>' +
+                         '</div>' +
+                       '</div>';
+              })() +
 
               '<div class="reveal" style="margin-top:var(--sp-6);">' +
                 '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-4);">گزینه‌ها و قیمت‌ها</h2>' +
@@ -120,14 +198,34 @@
                 '</div>' +
               '</div>' +
 
-              '<div class="reveal" style="margin-top:var(--sp-6);">' +
-                '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-4);">مراقبت‌های بعد از کار</h2>' +
-                '<ul class="check-list">' +
-                  s.aftercare.map(function (x) {
-                    return '<li>' + ZZ.icon('check') + '<span>' + u.esc(x) + '</span></li>';
-                  }).join('') +
-                '</ul>' +
-              '</div>' +
+              /* ---- مراقبت‌های قبل از کار ---- */
+              listSection('مراقبت‌های قبل از انجام کار', care.pre,
+                care.label ? ('این موارد برای ' + care.label + ' مشترک است.') : '') +
+
+              /* ---- مراقبت‌های بعد از کار ---- */
+              listSection('مراقبت‌های بعد از انجام کار', care.post,
+                care.label ? ('این موارد برای ' + care.label + ' مشترک است.') : '') +
+
+              /* ---- موارد ممنوعه — فقط خدمت‌های رنگ‌دانه‌ای ---- */
+              (function () {
+                if (!care.contra.length) return '';
+                return '<div class="reveal" style="margin-top:var(--sp-6);">' +
+                         '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-2);">' +
+                           'بیماری‌ها و شرایطی که باید اطلاع دهید</h2>' +
+                         '<p style="color:var(--text-muted);font-size:var(--fs-sm);margin-bottom:var(--sp-4);">' +
+                           'این موارد مانع همیشگی نیستند؛ بسته به شدت و نظر پزشک قابل انجام هستند. ' +
+                           'قبل از رزرو با ما هماهنگ کنید تا بهترین تصمیم را با هم بگیریم.</p>' +
+                         '<ul class="check-list check-list--soft">' +
+                           care.contra.map(function (x) {
+                             return '<li>' + ZZ.icon('alert') + '<span>' + u.esc(x) + '</span></li>';
+                           }).join('') +
+                         '</ul>' +
+                         (care.contraNote
+                           ? '<div class="note note--warn" style="margin-top:var(--sp-4);">' +
+                               ZZ.icon('info') + '<span>' + u.esc(care.contraNote) + '</span></div>'
+                           : '') +
+                       '</div>';
+              })() +
 
               '<div class="reveal" style="margin-top:var(--sp-6);">' +
                 '<h2 style="font-size:var(--fs-xl);margin-bottom:var(--sp-2);">سوال‌های پرتکرار</h2>' +

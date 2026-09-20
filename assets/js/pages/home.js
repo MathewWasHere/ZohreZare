@@ -17,6 +17,7 @@
         '</div>' +
         '<div class="svc-card__body">' +
           '<h3 class="svc-card__title">' + u.esc(s.title) + '</h3>' +
+          (s.tagline ? '<p class="svc-card__tagline">' + u.esc(s.tagline) + '</p>' : '') +
           '<div class="pill-row">' +
             (s.variants || []).slice(0, 3).map(function (v) {
               return '<span class="badge">' + u.esc(v.name) + '</span>';
@@ -108,7 +109,7 @@
     var PORTFOLIO_LABELS = {
       brows: 'نانوبروز و ابرو',
       lips: 'تینت و شیدینگ لب',
-      lashes: 'بن‌مژه',
+      lashes: 'مژه و اکستنشن',
       eyeliner: 'خط چشم دائم',
       'lash-lift': 'لیفت و لمینت'
     };

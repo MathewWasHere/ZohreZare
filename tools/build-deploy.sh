@@ -39,6 +39,9 @@ echo "==> ساخت و بررسی ساختار پایگاه داده"
 node "$ROOT/tools/make-schema.js" | tail -2
 node "$ROOT/tools/check-sql.js" | tail -2
 
+echo "==> بررسی کاتالوگ خدمات"
+node "$ROOT/tools/check-catalog.js" | tail -2
+
 echo "==> تطبیق قرارداد فرانت و بک‌اند"
 node "$ROOT/tools/check-api-contract.js" | tail -2
 

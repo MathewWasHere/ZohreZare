@@ -37,6 +37,9 @@ final class Config
             'base_url'  => 'http://in.payamak-service.ir/api/v2/RestWebApi/',
             'timeout'   => 15,
             'templates' => [
+                /* {service} از ستون sms_name خوانده می‌شود و {variant}
+                   گزینه‌ی انتخاب‌شده را می‌آورد — جزئیات در
+                   docs/sms-templates.md */
                 'otp'      => 'کد تایید شما: {code}',
                 'approved'    => null,
                 'rejected'    => null,

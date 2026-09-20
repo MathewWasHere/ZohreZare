@@ -75,6 +75,8 @@ final class Catalog
             'id'           => $s['id'],
             'slug'         => $s['slug'],
             'title'        => $s['title'],
+            'sms_name'     => $s['sms_name'] ?? '',
+            'tagline'      => $s['tagline'] ?? '',
             'short'        => $s['short_text'] ?? '',
             'image'        => $s['image'] ?? '',
             'icon'         => $s['icon'] ?? '',
@@ -83,8 +85,14 @@ final class Catalog
             'price_from'   => (int) $s['price_from'],
             'variants'     => $variants,
             'description'  => self::json($s['description']),
+            'benefits'     => self::json($s['benefits']),
             'includes'     => self::json($s['includes_json']),
+            'before_reserve' => self::json($s['before_reserve']),
+            'care_label'   => $s['care_label'] ?? '',
+            'precare'      => self::json($s['precare']),
             'aftercare'    => self::json($s['aftercare']),
+            'contraindications' => self::json($s['contraindications']),
+            'contraindications_note' => $s['contraindications_note'] ?? '',
             'good_for'     => self::json($s['good_for']),
             'faq'          => self::json($s['faq']),
         ];
@@ -115,11 +123,15 @@ final class Catalog
         $params = [];
 
         $textFields = [
-            'title'   => 'title',
-            'short'   => 'short_text',
-            'image'   => 'image',
-            'icon'    => 'icon',
-            'ig_link' => 'ig_link',
+            'title'      => 'title',
+            'sms_name'   => 'sms_name',
+            'tagline'    => 'tagline',
+            'short'      => 'short_text',
+            'image'      => 'image',
+            'icon'       => 'icon',
+            'ig_link'    => 'ig_link',
+            'care_label' => 'care_label',
+            'contraindications_note' => 'contraindications_note',
         ];
         foreach ($textFields as $key => $col) {
             if (array_key_exists($key, $in)) {
@@ -136,11 +148,15 @@ final class Catalog
         }
 
         $listFields = [
-            'description' => 'description',
-            'includes'    => 'includes_json',
-            'aftercare'   => 'aftercare',
-            'good_for'    => 'good_for',
-            'faq'         => 'faq',
+            'description'       => 'description',
+            'benefits'          => 'benefits',
+            'includes'          => 'includes_json',
+            'before_reserve'    => 'before_reserve',
+            'precare'           => 'precare',
+            'aftercare'         => 'aftercare',
+            'contraindications' => 'contraindications',
+            'good_for'          => 'good_for',
+            'faq'               => 'faq',
         ];
         foreach ($listFields as $key => $col) {
             if (array_key_exists($key, $in) && is_array($in[$key])) {

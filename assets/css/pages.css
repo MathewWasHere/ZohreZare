@@ -467,6 +467,27 @@
   margin-top: 6px;
 }
 
+/* فهرست‌های هشدار و اطلاع‌رسانی (نکات قبل از رزرو و موارد ممنوعه).
+   رنگ کم‌تر برای چشم نوک زدن زیاد به متن‌های بلند. */
+.check-list--soft li { font-size: var(--fs-sm); color: var(--text-muted); }
+.check-list--soft svg { color: var(--rose-300, var(--rose-500)); opacity: .85; }
+
+/* شعار زیر عنوان خدمت در سربرگ صفحه‌ی جزئیات */
+.page-head__tagline {
+  font-size: var(--fs-lg);
+  color: var(--rose-600, var(--text-soft));
+  line-height: 1.8;
+  margin-bottom: var(--sp-2);
+}
+
+/* شعار روی کارت خدمت */
+.svc-card__tagline {
+  font-size: var(--fs-xs);
+  color: var(--rose-600, var(--text-muted));
+  line-height: 1.7;
+  margin-bottom: var(--sp-2);
+}
+
 .pill-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--sp-2); }
 .badge {
   display: inline-block;

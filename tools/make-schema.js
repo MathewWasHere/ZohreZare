@@ -21,6 +21,9 @@ const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'api', 'schema.sql');
 
+/** بلوک‌های مراقبتی مشترک — بعد از بارگذاری پر می‌شود */
+let CARE = {};
+
 /* ---------------- خواندن خدمات از فایل فرانت ---------------- */
 
 function loadServices() {
@@ -28,16 +31,45 @@ function loadServices() {
   sandbox.window.window = sandbox.window;
   vm.createContext(sandbox);
 
-  const src = fs.readFileSync(
-    path.join(ROOT, 'assets', 'js', 'data', 'services.js'), 'utf8'
-  );
-  vm.runInContext(src, sandbox, { filename: 'services.js' });
+  /* service-care.js اول بارگذاری می‌شود چون services.js به بلوک‌های
+     مراقبتی مشترکش اشاره می‌کند (فیلد care) و برای پر کردن ستون‌های
+     مراقبت باید از قبل خوانده شده باشد. */
+  for (const file of ['service-care.js', 'services.js']) {
+    const src = fs.readFileSync(
+      path.join(ROOT, 'assets', 'js', 'data', file), 'utf8'
+    );
+    vm.runInContext(src, sandbox, { filename: file });
+  }
 
   const svc = sandbox.window.ZZ && sandbox.window.ZZ.services;
   if (!svc || typeof svc.getAll !== 'function') {
     throw new Error('services.js بارگذاری نشد — ساختارش عوض شده؟');
   }
+  CARE = sandbox.window.ZZ.care || {};
   return svc.getAll();
+}
+
+/**
+ * بلوک مراقبتی مشترک یک خدمت را به ستون‌های همان خدمت باز می‌کند.
+ *
+ * چرا؟ چون در services.js این متن‌ها یک‌بار و مشترک نوشته شده‌اند
+ * (service-care.js) و اگر در دیتابیس هم مشترک نگه داریم، ویرایش از
+ * پنل مدیریت باید در چند خدمت انجام شود. پس موقع ساخت SQL، بلوک
+ * مشترک داخل ستون‌های هر خدمت باز می‌شود و دیتابیس مثل بقیه‌ی
+ * محتوا، ساده و تک‌جدولی می‌ماند.
+ */
+function withCare(services) {
+  return services.map((s) => {
+    const block = (s.care && CARE[s.care]) || null;
+    const pmu = s.pmu && CARE.pmu ? CARE.pmu : null;
+    return Object.assign({}, s, {
+      careLabel: block ? (block.label || '') : '',
+      precare: block ? (block.pre || []) : [],
+      aftercare: block ? (block.post || []) : (s.aftercare || []),
+      contraindications: pmu ? (pmu.items || []) : [],
+      contraindicationsNote: pmu ? (pmu.note || '') : ''
+    });
+  });
 }
 
 /* ---------------- کمکی SQL ---------------- */
@@ -61,7 +93,7 @@ function j(value) {
 /* ---------------- ساخت فایل ---------------- */
 
 function build() {
-  const services = loadServices();
+  const services = withCare(loadServices());
 
   const L = [];
   const p = (s) => L.push(s === undefined ? '' : s);
@@ -147,6 +179,8 @@ function build() {
   p('  id            VARCHAR(40)  NOT NULL,');
   p('  slug          VARCHAR(60)  NOT NULL,');
   p('  title         VARCHAR(120) NOT NULL,');
+  p('  sms_name      VARCHAR(80)  NOT NULL DEFAULT \'\',');
+  p('  tagline       VARCHAR(160) NOT NULL DEFAULT \'\',');
   p("  short_text    VARCHAR(300) NOT NULL DEFAULT '',");
   p("  image         VARCHAR(200) NOT NULL DEFAULT '',");
   p("  icon          VARCHAR(40)  NOT NULL DEFAULT '',");
@@ -154,8 +188,14 @@ function build() {
   p('  duration_min  SMALLINT     NOT NULL DEFAULT 60,');
   p('  price_from    INT          NOT NULL DEFAULT 0,');
   p('  description   MEDIUMTEXT   NULL,');
+  p('  benefits      MEDIUMTEXT   NULL,');
   p('  includes_json MEDIUMTEXT   NULL,');
+  p('  before_reserve MEDIUMTEXT  NULL,');
+  p('  care_label    VARCHAR(160) NOT NULL DEFAULT \'\',');
+  p('  precare       MEDIUMTEXT   NULL,');
   p('  aftercare     MEDIUMTEXT   NULL,');
+  p('  contraindications MEDIUMTEXT NULL,');
+  p('  contraindications_note VARCHAR(400) NULL,');
   p('  good_for      MEDIUMTEXT   NULL,');
   p('  faq           MEDIUMTEXT   NULL,');
   p('  sort_order    SMALLINT     NOT NULL DEFAULT 0,');
@@ -271,26 +311,41 @@ function build() {
   services.forEach((s, i) => {
     p('-- ' + s.title);
     p('INSERT INTO services');
-    p('  (id, slug, title, short_text, image, icon, ig_link, duration_min,');
-    p('   price_from, description, includes_json, aftercare, good_for, faq,');
-    p('   sort_order, active)');
+    p('  (id, slug, title, sms_name, tagline, short_text, image, icon, ig_link,');
+    p('   duration_min, price_from, description, benefits, includes_json,');
+    p('   before_reserve, care_label, precare, aftercare, contraindications,');
+    p('   contraindications_note, good_for, faq, sort_order, active)');
     p('VALUES (');
-    p('  ' + q(s.id) + ', ' + q(s.slug) + ', ' + q(s.title) + ',');
+    p('  ' + q(s.id) + ', ' + q(s.slug) + ', ' + q(s.title) + ', ' + q(s.smsName || '') + ',');
+    p('  ' + q(s.tagline || '') + ',');
     p('  ' + q(s.short) + ',');
     p('  ' + q(s.image) + ', ' + q(s.icon) + ', ' + q(s.igLink || null) + ',');
     p('  ' + (s.durationMin | 0) + ', ' + (s.priceFrom | 0) + ',');
     p('  ' + j(s.description) + ',');
+    p('  ' + j(s.benefits) + ',');
     p('  ' + j(s.includes) + ',');
+    p('  ' + j(s.beforeReserve) + ',');
+    p('  ' + q(s.careLabel || '') + ',');
+    p('  ' + j(s.precare) + ',');
     p('  ' + j(s.aftercare) + ',');
+    p('  ' + j(s.contraindications) + ',');
+    p('  ' + q(s.contraindicationsNote || null) + ',');
     p('  ' + j(s.goodFor) + ',');
     p('  ' + j(s.faq) + ',');
     p('  ' + i + ', 1');
     p(')');
     p('ON DUPLICATE KEY UPDATE');
-    p('  slug = VALUES(slug), title = VALUES(title), short_text = VALUES(short_text),');
+    p('  slug = VALUES(slug), title = VALUES(title), sms_name = VALUES(sms_name),');
+    p('  tagline = VALUES(tagline),');
+    p('  short_text = VALUES(short_text),');
     p('  image = VALUES(image), icon = VALUES(icon), duration_min = VALUES(duration_min),');
     p('  price_from = VALUES(price_from), description = VALUES(description),');
-    p('  includes_json = VALUES(includes_json), aftercare = VALUES(aftercare),');
+    p('  benefits = VALUES(benefits),');
+    p('  includes_json = VALUES(includes_json), before_reserve = VALUES(before_reserve),');
+    p('  care_label = VALUES(care_label), precare = VALUES(precare),');
+    p('  aftercare = VALUES(aftercare),');
+    p('  contraindications = VALUES(contraindications),');
+    p('  contraindications_note = VALUES(contraindications_note),');
     p('  good_for = VALUES(good_for), faq = VALUES(faq), sort_order = VALUES(sort_order);');
     p();
 
@@ -307,6 +362,21 @@ function build() {
     });
     p();
   });
+
+  /* ---------- خدمات حذف‌شده: غیرفعال، نه پاک ---------- */
+  const ids = services.map((s) => q(s.id)).join(', ');
+  p('-- ==========================================================================');
+  p('-- خدمت‌هایی که دیگر ارائه نمی‌شوند');
+  p('--');
+  p('-- عمداً حذف نمی‌شوند: هر نوبتِ ثبت‌شده با service_id به خدمتش');
+  p('-- وصل است و اگر ردیف خدمت پاک شود، اسم خدمت در تاریخچه‌ی همان');
+  p('-- نوبت‌ها (و در پیامک‌هایشان) خالی می‌شود. پس فقط غیرفعال');
+  p('-- می‌شوند تا از سایت و فرم رزرو کنار بروند ولی تاریخچه سالم');
+  p('-- بماند. این دستور خودکار است: هر خدمتی که در services.js نباشد');
+  p('-- از فهرست سایت خارج می‌شود.');
+  p('-- ==========================================================================');
+  p('UPDATE services SET active = 0 WHERE id NOT IN (' + ids + ');');
+  p();
 
   p('-- ==========================================================================');
   p('-- اختیاری — قفل ضدِ رزرو هم‌زمان');

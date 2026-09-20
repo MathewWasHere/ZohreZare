@@ -161,6 +161,32 @@ if ($dbOk) {
                    : 'خالی است — schema.sql کامل ایمپورت نشده'
         );
 
+        /* ستون‌های تازه‌ی محتوا (شعار، مزایا، مراقبت‌ها، موارد ممنوعه و
+           نام پیامکی). اگر سایت به‌روز شده باشد ولی دیتابیس نه، این
+           ستون‌ها نیستند و افزونه‌های صفحه‌ی خدمت خالی می‌مانند —
+           پس صریح می‌گوییم چه کار کند. */
+        $neededCols = ['tagline', 'sms_name', 'benefits', 'before_reserve',
+                       'care_label', 'precare', 'contraindications'];
+        $rows = Db::all(
+            "SELECT COLUMN_NAME FROM information_schema.columns
+              WHERE table_schema = DATABASE() AND table_name = 'services'
+                AND column_name IN ('tagline','sms_name','benefits','before_reserve',
+                                    'care_label','precare','contraindications')"
+        );
+        $haveCols = [];
+        foreach ($rows as $r) {
+            $haveCols[] = (string) $r['COLUMN_NAME'];
+        }
+        $missCols = array_values(array_diff($neededCols, $haveCols));
+        check(
+            'ستون‌های محتوای تازه',
+            $missCols ? 'warn' : 'ok',
+            $missCols
+                ? 'این ستون‌ها در جدول services نیستند: ' . implode('، ', $missCols)
+                  . ' — api/schema.sql را یک بار دیگر ایمپورت کنید (اطلاعات موجود پاک نمی‌شود)'
+                : 'شعار، مزایا، مراقبت‌ها و نام پیامکی آماده است'
+        );
+
         $lock = Db::one(
             "SELECT COLUMN_NAME FROM information_schema.columns
               WHERE table_schema = DATABASE() AND table_name = 'appointments'

@@ -597,10 +597,19 @@
         '</button>' +
 
         '<div class="svc-card__body"><div class="svc-card__body__inner">' +
-          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، توضیح کوتاه و لینک اینستاگرام.', 
+          svcSection(1, 'اطلاعات پایه‌ی خدمت', 'عنوان، شعار، توضیح کوتاه و لینک اینستاگرام.',
             '<label class="svc-field">' +
               '<span>نام خدمت</span>' +
               '<input class="input" type="text" data-s="title" value="' + u.esc(s.title) + '">' +
+            '</label>' +
+            '<label class="svc-field">' +
+              '<span>نام پیامکی (برای پیامک‌ها — کوتاه بنویسید تا هزینه بالا نرود)</span>' +
+              '<input class="input" type="text" data-s="sms_name" ' +
+                'placeholder="مثلاً: میکروبلیدینگ ابرو" value="' + u.esc(s.sms_name || '') + '">' +
+            '</label>' +
+            '<label class="svc-field">' +
+              '<span>شعار (زیر عنوان، در صفحه‌ی خدمت و کارت‌ها)</span>' +
+              '<input class="input" type="text" data-s="tagline" value="' + u.esc(s.tagline || '') + '">' +
             '</label>' +
             '<label class="svc-field">' +
               '<span>توضیح کوتاه (زیر عنوان کارت)</span>' +
@@ -630,12 +639,43 @@
               listEditor('description', s.description || [], 'متن پاراگراف…', false) +
             '</div>' +
             '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">مزایای خدمت</h4>' +
+              listEditor('benefits', s.benefits || [], 'مثلاً: بینیاز از خط‌چشم روزانه', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
               '<h4 class="svc-sub">این خدمت شامل چه چیزهایی می‌شود</h4>' +
               listEditor('includes', s.includes || [], 'مثلاً: مشاوره‌ی رایگان', false) +
             '</div>' +
             '<div class="svc-subgroup">' +
-              '<h4 class="svc-sub">مراقبت‌های بعد از انجام</h4>' +
+              '<h4 class="svc-sub">نکات مهم قبل از رزرو نوبت</h4>' +
+              listEditor('before_reserve', s.before_reserve || [], 'مثلاً: کار تقریباً بدون درد است', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">مراقبت‌های قبل از انجام کار</h4>' +
+              '<p class="svc-hint">این فهرست بین خدمت‌هایی که ناحیه‌ی مشترک دارند یکسان است ' +
+                '(مثلاً مراقبت لب برای دارک لیپس و شیدینگ لب).</p>' +
+              '<label class="svc-field">' +
+                '<span>عنوان این گروه مراقبتی</span>' +
+                '<input class="input" type="text" data-s="care_label" ' +
+                  'value="' + u.esc(s.care_label || '') + '">' +
+              '</label>' +
+              listEditor('precare', s.precare || [], 'مثلاً: از ۴۸ ساعت قبل لایه‌بردار نزنید', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">مراقبت‌های بعد از انجام کار</h4>' +
               listEditor('aftercare', s.aftercare || [], 'مثلاً: تا ۲۴ ساعت آب نزنید', false) +
+            '</div>' +
+            '<div class="svc-subgroup">' +
+              '<h4 class="svc-sub">بیماری‌ها و شرایط ممنوعه</h4>' +
+              '<p class="svc-hint">برای خدمت‌های رنگ‌دانه‌ای (PMU) نمایش داده می‌شود. ' +
+                'اگر خالی بماند، این بخش در صفحه‌ی خدمت نمی‌آید.</p>' +
+              listEditor('contraindications', s.contraindications || [],
+                'مثلاً: بارداری و شیردهی', false) +
+              '<label class="svc-field">' +
+                '<span>جمله‌ی هشدار زیر فهرست</span>' +
+                '<textarea class="input" data-s="contraindications_note" rows="2">' +
+                  u.esc(s.contraindications_note || '') + '</textarea>' +
+              '</label>' +
             '</div>' +
             '<div class="svc-subgroup">' +
               '<h4 class="svc-sub">پرسش‌های متداول</h4>' +
@@ -723,12 +763,15 @@
       payload[el.dataset.s] = el.value.trim();
     });
 
+    /* شناسه‌ی خدمت رشته است (مثل svc_ben_mozhe) — نه عدد. قبلاً
+       این‌جا با parseInt مقایسه می‌شد و هیچ‌وقت جواب نمی‌داد. */
+    var svc = state.services.filter(function (x) {
+      return String(x.id) === String(card.dataset.svc);
+    })[0];
+
     payload.variants = u.$$('.svc-var', card).map(function (row) {
       var i = parseInt(row.dataset.vi, 10);
-      var svc = state.services.filter(function (x) {
-        return x.id === parseInt(card.dataset.svc, 10);
-      })[0];
-      var orig = svc.variants[i];
+      var orig = (svc && svc.variants[i]) || {};
 
       var get = function (f) { return u.$('[data-f="' + f + '"]', row); };
       return {
@@ -743,7 +786,8 @@
     });
 
     /* ---- فهرست‌های متنی ---- */
-    ['good_for', 'description', 'includes', 'aftercare'].forEach(function (field) {
+    ['good_for', 'description', 'benefits', 'includes', 'before_reserve',
+     'precare', 'aftercare', 'contraindications'].forEach(function (field) {
       var wrap = u.$('[data-list-wrap="' + field + '"]', card);
       if (!wrap) return;
       payload[field] = u.$$('[data-list]', wrap)

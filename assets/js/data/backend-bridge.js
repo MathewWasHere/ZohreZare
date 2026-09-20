@@ -72,6 +72,8 @@
       id: s.id,
       slug: s.slug,
       title: s.title,
+      smsName: s.sms_name || '',
+      tagline: s.tagline || '',
       short: s.short,
       image: s.image,
       icon: s.icon,
@@ -90,8 +92,14 @@
       /* محتوای صفحه — حالا سرور هم نگهشان می‌دارد و از پنل
          مدیریت قابل ویرایش‌اند. */
       description: s.description || [],
+      benefits: s.benefits || [],
       includes: s.includes || [],
+      beforeReserve: s.before_reserve || [],
+      careLabel: s.care_label || '',
+      precare: s.precare || [],
       aftercare: s.aftercare || [],
+      contraindications: s.contraindications || [],
+      contraindicationsNote: s.contraindications_note || '',
       goodFor: s.good_for || [],
       faq: s.faq || []
     };
@@ -419,7 +427,58 @@
       },
       users: function (params) { return ZZ.api.admin.users(params); },
       birthdays: function () { return ZZ.api.admin.birthdays(); },
-      services: function () { return ZZ.api.admin.services(); },
+      /**
+       * فهرست خدمات برای ویرایشگر پنل مدیریت.
+       *
+       * سرور ردیف‌های دیتابیس را می‌دهد؛ ولی ویرایشگر به شکل دیگری
+       * احتیاج دارد و باید همین‌جا تبدیل شود:
+       *   • شناسه‌ی خدمت رشته است («svc_ben_mozhe»)، نه عدد
+       *   • شناسه‌ی گزینه همان variant_key است
+       *   • ردیف دیتابیس ستون is_active ندارد؛ وگرنه ویرایشگر همه را
+       *     «غیرفعال» نشان می‌دهد.
+       */
+      services: function () {
+        return ZZ.api.admin.services().then(function (rows) {
+          return (rows || []).map(function (s) {
+            return {
+              id: s.id,
+              slug: s.slug,
+              title: s.title || '',
+              sms_name: s.sms_name || '',
+              tagline: s.tagline || '',
+              short: s.short || '',
+              image: s.image || '',
+              icon: s.icon || '',
+              ig_link: s.ig_link || '',
+              duration_min: s.duration_min,
+              price_from: s.price_from,
+              is_active: true,
+              variants: (s.variants || []).map(function (v) {
+                return {
+                  id: v.id,          // = variant_key
+                  key: v.id,
+                  name: v.name || '',
+                  note: v.note || '',
+                  duration_min: v.duration_min,
+                  price: v.price,
+                  is_active: true
+                };
+              }),
+              description: s.description || [],
+              benefits: s.benefits || [],
+              includes: s.includes || [],
+              before_reserve: s.before_reserve || [],
+              care_label: s.care_label || '',
+              precare: s.precare || [],
+              aftercare: s.aftercare || [],
+              contraindications: s.contraindications || [],
+              contraindications_note: s.contraindications_note || '',
+              good_for: s.good_for || [],
+              faq: s.faq || []
+            };
+          });
+        });
+      },
       updateService: function (id, data) {
         return ZZ.api.admin.updateService(id, data).then(function (r) {
           /* کش خدمات باطل شود تا قیمت جدید همه‌جا دیده شود */
@@ -480,7 +539,9 @@
       var merged = Object.assign({}, local, remote);
 
       /* اگر فهرستی روی سرور خالی بود، از نسخه‌ی محلی استفاده کن */
-      ['description', 'includes', 'aftercare', 'goodFor', 'faq'].forEach(function (k) {
+      ['description', 'benefits', 'includes', 'beforeReserve',
+       'precare', 'aftercare', 'contraindications',
+       'goodFor', 'faq'].forEach(function (k) {
         if (!remote[k] || !remote[k].length) merged[k] = local[k] || [];
       });
 

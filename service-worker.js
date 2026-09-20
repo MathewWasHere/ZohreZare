@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zohrezare-v11';
+const CACHE_NAME = 'zohrezare-v12';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
   './assets/js/core/store.js',
   './assets/js/core/utils.js',
   './assets/js/core/api.js',
+  './assets/js/data/service-care.js',
   './assets/js/data/services.js',
   './assets/js/data/auth.js',
   './assets/js/data/appointments.js',

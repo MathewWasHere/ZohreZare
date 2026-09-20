@@ -58,6 +58,10 @@
             '</span>' +
             '<div style="flex:1;min-width:0;">' +
               '<h3 style="font-size:var(--fs-md);margin-bottom:6px;">' + u.esc(s.title) + '</h3>' +
+              (s.tagline
+                ? '<p style="font-size:var(--fs-xs);color:var(--rose-600,var(--text-muted));' +
+                    'line-height:1.8;margin-bottom:6px;">' + u.esc(s.tagline) + '</p>'
+                : '') +
               '<p style="font-size:var(--fs-sm);color:var(--text-muted);line-height:1.9;margin-bottom:10px;">' +
                 'مناسب برای: ' + s.goodFor.map(u.esc).join(' • ') +
               '</p>' +

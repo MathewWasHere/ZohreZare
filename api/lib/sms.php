@@ -290,16 +290,58 @@ final class Sms
             $vars = array_merge([
                 'date'    => Jalali::long((string) $appt['date']),
                 'time'    => Jalali::fa((string) $appt['time']),
-                'service' => (string) Db::val(
-                    'SELECT title FROM services WHERE id = ?',
-                    [$appt['service_id']]
-                ),
+
+                /* اسم خدمت همان‌جا از دیتابیس خوانده می‌شود، پس اگر در
+                   پنل مدیریت اسمش عوض شود، پیامک خودکار متن تازه را
+                   می‌فرستد و هیچ کدی لازم نیست تغییر کند.
+
+                   اگر ستون sms_name پر باشد همان فرستاده می‌شود —
+                   عنوان‌های بلند (که شعار هم دارند) پیامک را از یک
+                   بخش به دو بخش می‌برند و هزینه را بالا می‌برند.
+                   روی دیتابیس قدیمی که این ستون را ندارد، خودبه‌خود
+                   به title برمی‌گردیم تا پیامک‌ها قطع نشوند. */
+                'service' => self::serviceName((string) $appt['service_id']),
+
+                /* گزینه‌ی انتخاب‌شده (مثلاً «خط چشم اسموکی» یا «لیفت
+                   مژه»). برای سالن مهم است بداند دقیقاً چه چیزی رزرو
+                   شده، چون مدت و قیمت گزینه‌ها با هم فرق دارد. اگر
+                   نوبت‌های قدیمی این ستون را نداشته باشند، رشته‌ی
+                   خالی می‌شود و خط اضافه در پیامک نمی‌افتد. */
+                'variant' => isset($appt['variant_name']) ? (string) $appt['variant_name'] : '',
             ], $extra);
 
             (new self())->send((string) $phone, self::render($tpl, $vars), $key);
         } catch (Throwable $e) {
             error_log('[zz] پیامک اطلاع‌رسانی ناموفق: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * نام خدمت برای متن پیامک.
+     *
+     * اول «نام پیامکی» کوتاه خوانده می‌شود (اگر مدیر تعیین کرده باشد)
+     * و اگر نبود، عنوان کامل خدمت. روی دیتابیسی که هنوز ستون
+     * sms_name را ندارد، خطای ستون گرفته می‌شود و بی‌سروصدا به
+     * عنوان برمی‌گردیم — وگرنه یک بار ارتقا نشدن دیتابیس، همه‌ی
+     * پیامک‌ها را قطع می‌کرد.
+     */
+    private static function serviceName(string $serviceId): string
+    {
+        if ($serviceId === '') {
+            return '';
+        }
+        try {
+            $name = Db::val(
+                'SELECT IF(sms_name <> "", sms_name, title) FROM services WHERE id = ?',
+                [$serviceId]
+            );
+            if ($name !== null) {
+                return (string) $name;
+            }
+        } catch (Throwable $e) {
+            /* ستون sms_name وجود ندارد → برو سراغ عنوان */
+        }
+        return (string) Db::val('SELECT title FROM services WHERE id = ?', [$serviceId]);
     }
 
     /**
